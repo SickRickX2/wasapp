@@ -1,4 +1,4 @@
-openapi: 3.0.0
+openapi: 3.1.0
 servers:
   - url: "http://localhost:3000"
 info:
@@ -40,12 +40,74 @@ paths:
                   identifier:
                     type: string
                     example: "ciao12345"
+  /users/{userId}/username:
+    put:
+      summary: set username 
+      description: the user set the username that other users will see while texting with him
+      operationId: setMyUserName
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: UserName desired
+        content: 
+          application/json:
+            schema: 
+              type: object
+              properties:
+                UserName:
+                  type: string
+                  example: Pippox2
+                  minLength: 3
+                  maxLength: 16
+        required: true
+      responses:
+        '200':
+          description: Username set successful
+        '400' : { $ref: "#/components/responses/BadRequest" }
+
+  /users/{userId}/pfp:
+    put: 
+      summary: set profile picture
+      description: the user set the profile picture that other users will see while texting with him
+      operationId: setMyPhoto
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                pfp:
+                  type: string
+                  format: binary
+        required: true
+      responses: 
+        '200':
+          description: Profile picture set successful
+        '400' : { $ref: "#/components/responses/BadRequest" }
+        
+  
+
+    
+
+components:
+  responses:
+    BadRequest:   
+      description: The request was not compliant with the documentation (eg. missing fields, etc)
+    
 
 
 
 
-
-                
 
 
 #TODO: 
