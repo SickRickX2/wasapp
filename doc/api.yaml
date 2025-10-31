@@ -95,11 +95,6 @@ paths:
           description: Profile picture set successful
         '400' : { $ref: "#/components/responses/BadRequest" }
 
-
-  
-
-    
-
 components:
   responses:
     BadRequest:   
@@ -118,9 +113,16 @@ components:
         text:
           type: string
           description: testo del messaggio (opzionale)
+          minLength: 1
+          maxLength: 150
         media:
           $ref: '#/components/schemas/Media'
           description: media del messaggio (opzionale)
+        time:
+          description: time that message was sent 
+          type: string
+          format: date-time
+          example: "11:23"
       anyOf:
         - required: ["text"]
         - required: ["media"]
@@ -132,19 +134,54 @@ components:
         url:
           type: string
           format: uri
-          description: URL dell'immagine
+          description: URL of image
         filename:
           type: string
-          description: Nome del file immagine
+          description: file image name
         mimeType:
           type: string
           description: image/png, image/jpeg
         size:
           type: integer
-          description: Dimensione in byte dell'immagine
+          description: image size in byte
       required:
         - url
         - mimeType
+
+    Conversation: 
+      type: array
+      properties:
+        partecipants:
+          type:
+            array
+          items: 
+            description: List of ID of the users that partecipate the conversation
+            type: string
+        messages:
+          type:
+            array
+          items:
+            description: List of messages sent by the users
+    
+    Group:
+      allOf:
+        - $ref: '#/components/schemas/Conversation'
+        - type: object
+          description: conversation with at least 2 users or more with option to set a name and a pic 
+          properties:
+            groupName:
+              type: string
+              description: Group name
+              default: "New Group"
+            participants:
+              type: array
+              items:
+                type: string
+              minItems: 2     
+              maxItems: 100
+          required:
+            - participants
+
 
           
     
@@ -165,5 +202,4 @@ components:
 #• addToGroup
 #• leaveGroup
 #• setGroupName
-#
 #• setGroupPhoto
