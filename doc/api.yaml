@@ -94,7 +94,8 @@ paths:
         '200':
           description: Profile picture set successful
         '400' : { $ref: "#/components/responses/BadRequest" }
-        
+
+
   
 
     
@@ -103,6 +104,49 @@ components:
   responses:
     BadRequest:   
       description: The request was not compliant with the documentation (eg. missing fields, etc)
+  schemas:
+    Message:
+      type: object
+      description: message sent by an user
+      properties:
+        status:
+          type: string
+          enum:
+            - "seen"
+            - "sent"
+            - "sending"
+        text:
+          type: string
+          description: testo del messaggio (opzionale)
+        media:
+          $ref: '#/components/schemas/Media'
+          description: media del messaggio (opzionale)
+      anyOf:
+        - required: ["text"]
+        - required: ["media"]
+
+    Media:
+      type: object
+      description: Oggetto che rappresenta un'immagine allegata al messaggio
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL dell'immagine
+        filename:
+          type: string
+          description: Nome del file immagine
+        mimeType:
+          type: string
+          description: image/png, image/jpeg
+        size:
+          type: integer
+          description: Dimensione in byte dell'immagine
+      required:
+        - url
+        - mimeType
+
+          
     
 
 
@@ -111,7 +155,6 @@ components:
 
 
 #TODO: 
-#• setMyUserName
 #• getMyConversations
 # getConversation
 #• sendMessage
@@ -122,5 +165,5 @@ components:
 #• addToGroup
 #• leaveGroup
 #• setGroupName
-#• setMyPhoto
+#
 #• setGroupPhoto
