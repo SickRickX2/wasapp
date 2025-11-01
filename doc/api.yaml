@@ -94,6 +94,39 @@ paths:
         '200':
           description: Profile picture set successful
         '400' : { $ref: "#/components/responses/BadRequest" }
+    
+  /conversations/{convId}/participants:
+    post:
+      summary: add a member to the group
+      operationId: addToGroup
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userIds:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 20
+              required:
+                - userIds
+
+
+
+
+                
+
+
 
 components:
   responses:
@@ -155,16 +188,16 @@ components:
     Conversation: 
       type: object
       properties:
-        GroupID: 
+        convId: 
           type: string
           example: g2074f-f34567
-          description: "Group identifier"
+          description: "Conversation identifier"
 
         participants:
           type:
             array
           items: 
-            description: List of ID of the users that partecipate the conversation
+            description: List of ID of the users that participate the conversation
             type: string
         messages:
           type:
@@ -190,6 +223,7 @@ components:
               maxItems: 100
           required:
             - participants
+      
 
 
           
