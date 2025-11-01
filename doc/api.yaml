@@ -123,6 +123,10 @@ components:
           type: string
           format: date-time
           example: "11:23"
+        sender:
+          description: the user who sent the message
+          $ref: "#users/{userId}/username"
+    
       anyOf:
         - required: ["text"]
         - required: ["media"]
@@ -149,9 +153,14 @@ components:
         - mimeType
 
     Conversation: 
-      type: array
+      type: object
       properties:
-        partecipants:
+        GroupID: 
+          type: string
+          example: g2074f-f34567
+          description: "Group identifier"
+
+        participants:
           type:
             array
           items: 
