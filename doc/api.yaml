@@ -67,6 +67,10 @@ paths:
       responses:
         '200':
           description: Username set successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
         '400' : { $ref: "#/components/responses/BadRequest" }
 
   /users/{userId}/pfp:
@@ -93,6 +97,10 @@ paths:
       responses: 
         '200':
           description: Profile picture set successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
         '400' : { $ref: "#/components/responses/BadRequest" }
     
   /conversations/{convId}/participants:
@@ -121,18 +129,66 @@ paths:
               required:
                 - userIds
 
-
-
-
-                
-
-
+  /conversations/{convId}/groupPhoto:
+    put:
+      summary: set the group photo
+      description: the user sets the photo for the group conversation
+      operationId: setGroupPhoto
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                groupPhoto:
+                  type: string
+                  format: binary
+      responses: 
+        '200':
+          description: Group photo set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'                
 
 components:
   responses:
     BadRequest:   
       description: The request was not compliant with the documentation (eg. missing fields, etc)
   schemas:
+    User:
+      type: object
+      description: User profile in the system
+      properties:
+        userId:
+          type: string
+          description: Unique user identifier
+        userName:
+          type: string
+          minLength: 3
+          maxLength: 16
+          example: Pippox2
+        pfp:
+          type: string
+          format: uri
+          description: URL of profile picture
+        createdAt:
+          type: string
+          format: date-time
+          description: User creation date
+      required:
+        - userId
+        - userName
+
     Message:
       type: object
       description: message sent by an user
@@ -215,6 +271,9 @@ components:
               type: string
               description: Group name
               default: "New Group"
+            groupPhoto: 
+              type: string
+              format: binary              
             participants:
               type: array
               items:
@@ -223,8 +282,6 @@ components:
               maxItems: 100
           required:
             - participants
-      
-
 
           
     
@@ -242,7 +299,5 @@ components:
 #• commentMessage
 #• uncommentMessage
 #• deleteMessage
-#• addToGroup
 #• leaveGroup
 #• setGroupName
-#• setGroupPhoto
