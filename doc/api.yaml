@@ -169,7 +169,7 @@ paths:
       summary: get a specific conversation
       description: returns details of a single conversation by its identifier
       operationId: getConversation
-      tags: ["groups"]
+      tags: ["groups","get"]
       parameters:
         - name: convId
           in: path
@@ -193,6 +193,41 @@ paths:
                   error:
                     type: string
                     example: "Conversation not found"
+  /users/{userId}/conversations:
+    get:
+      summary: get all the conversations of the user
+      description: returns a list of all the user's conversations
+      operationId: getMyConversations
+      tags: ["get"]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: 
+            type: string
+      responses:
+        '200':
+          description: list of conversations
+          content:
+           application/json:
+            schema:
+              type: array
+              items: 
+                $ref: "#/components/schemas/Conversation"
+        '404':
+          description: conversations not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Conversations not found"
+
+      
+
+
 
                   
 
@@ -328,7 +363,6 @@ components:
 
 #TODO: 
 #• getMyConversations
-# getConversation
 #• sendMessage
 #• forwardMessage
 #• commentMessage
