@@ -133,6 +133,32 @@ paths:
               required:
                 - userIds
 
+  /conversations/{convId}/participants/{userId}:              
+    delete:
+      operationId: leaveGroup
+      summary: leave the group
+      tags: ["group"]
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: convId
+          in: path
+          required: true
+          schema: 
+            type: string
+      responses:
+        '200':
+          description: Successfully left the group
+        '404':
+          description: Group or user not found
+
+
+          
+
+
   /conversations/{convId}/groupPhoto:
     put:
       summary: set the group photo
@@ -271,7 +297,7 @@ paths:
                   error:
                     type: string
                     example: "Conversations not found"
-
+            
       
 
 
@@ -405,7 +431,7 @@ components:
               minItems: 2     
               maxItems: 100
           required:
-            - participants
+            - participants    
 
           
     
@@ -413,10 +439,8 @@ components:
 
 
 
-
-
 #TODO: 
-#• sendMessage
+#• sendMessage 
 #• forwardMessage
 #• commentMessage
 #• uncommentMessage
