@@ -60,7 +60,7 @@ paths:
             schema: 
               type: object
               properties:
-                UserName:
+                username:
                   type: string
                   example: Pippox2
                   minLength: 3
@@ -156,7 +156,7 @@ paths:
           description: Group or user not found
 
 
-          
+
 
 
   /conversations/{convId}/groupPhoto:
@@ -297,8 +297,53 @@ paths:
                   error:
                     type: string
                     example: "Conversations not found"
-            
+                    
+  /conversations/{convId}/messages/messageId:
+    delete: 
+      operationId: deleteMessage
+      summary: delete a message from conversation
+      parameters:
+      - name: convId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: message deleted successfully
+        '404':
+          description: message not found
+    post: 
+      operationId: sendMessage
+      summary: the user send a message to the conversation
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Message"
+      responses:
+        '200':
+          description: message sent successfully
+        '404':
+          description: conv not found
+        '400':
+          $ref: '#/components/responses/BadRequest'
       
+
+
+
 
 
 
@@ -359,6 +404,9 @@ components:
         sender:
           description: ID of the sender
           type: string
+        messageId:
+          type: string
+          description: Unique identifier for the message
         kind:
           type: string
           enum: 
@@ -433,16 +481,9 @@ components:
           required:
             - participants    
 
-          
-    
-
-
 
 
 #TODO: 
-#• sendMessage 
 #• forwardMessage
 #• commentMessage
 #• uncommentMessage
-#• deleteMessage
-#• leaveGroup
