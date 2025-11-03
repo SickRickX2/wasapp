@@ -5,6 +5,7 @@ info:
   title: WASAText
   description: WASAText; "Programmazione per il Web 2025/26"'s project
   version: 0.0.1
+
 paths:
   /session:
     post:
@@ -155,10 +156,6 @@ paths:
         '404':
           description: Group or user not found
 
-
-
-
-
   /conversations/{convId}/groupPhoto:
     put:
       summary: set the group photo
@@ -190,6 +187,7 @@ paths:
                 $ref: '#/components/schemas/Group'
         '400':
           $ref: '#/components/responses/BadRequest'
+
   /conversations/{convId}/groupName:
     put:
       operationId: setGroupName
@@ -233,10 +231,7 @@ paths:
                     error:
                       type: string
                       example: "Group not found"
-
-
-        
-  
+ 
   /conversations/{convId}:
     get:
       summary: get a specific conversation
@@ -266,6 +261,7 @@ paths:
                   error:
                     type: string
                     example: "Conversation not found"
+
   /users/{userId}/conversations:
     get:
       summary: get all the conversations of the user
@@ -341,55 +337,71 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
-  /conversations/{convId}/messages/{messageId}/forward:
+  /conversations/{convId}/messages/{messageId}/forwarded:
     post:
       summary: Forward an existing message to this conversation
-      operationId: forwardMessage
-      parameters:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForwardedMessage'
+            example:
+              kind: forwarded
+              text: "optional text"
+              media:
+                url: "https://example.com/file.png"
+                filename: "file.png"
+                mimeType: "image/png"
+                size: 12345
+        responses:
+          '200':
+            description: Message forwarded successfully
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ForwardedMessage"
+          '404':
+            description: Message or conversation not found
+          '400':
+            $ref: '#/components/responses/BadRequest'
+
+  /conversations/{convId}/messages/{messageId}/comments:
+    post:
+      operationId: commentMessage
+      summary: the user comments a specific message of the conversation
+      parameters: 
         - name: convId
           in: path
           required: true
-          schema:
+          schema: 
             type: string
         - name: messageId
           in: path
           required: true
           schema:
             type: string
+
       requestBody:
         required: true
         content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                kind:
-                  type: string
-                  enum: [forwarded]
-                  default: forwarded
-                text:
-                  type: string
-                  description: "optional message text override"
-                media:
-                  $ref: "#/components/schemas/Media"
-              required:
-                - kind
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+              example:
+                kind: comment
+                text: "this is a comment"
       responses:
         '200':
-          description: Message forwarded successfully
+          description: Message commented successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Message"
+                $ref: "#/components/schemas/Comment"
         '404':
           description: Message or conversation not found
         '400':
           $ref: '#/components/responses/BadRequest'
-
-
-
-
-
 
                   
 
@@ -523,11 +535,32 @@ components:
               minItems: 2     
               maxItems: 100
           required:
-            - participants    
+            - participants  
+            
+    Comment:
+      allOf:
+        - $ref: '#/components/schemas/Message'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum: [comment]
+              default: comment
+          required:
+            - kind
 
+    ForwardedMessage:
+      allOf:
+        - $ref: '#/components/schemas/Message'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum: [forwarded]
+              default: forwarded
+          required:
+            - kind
 
 
 #TODO: 
-#• forwardMessage
-#• commentMessage
 #• uncommentMessage
