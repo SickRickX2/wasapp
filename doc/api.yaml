@@ -37,10 +37,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  identifier:
+                  userId:
                     type: string
                     example: "ciao12345"
-
+ 
   /users/{userId}/username:
     put:
       summary: set username 
@@ -164,6 +164,52 @@ paths:
                 $ref: '#/components/schemas/Group'
         '400':
           $ref: '#/components/responses/BadRequest'
+  /conversations/{convId}/groupName:
+    put:
+      operationId: setGroupName
+      description: the user sets the group name
+      tags: ["set", "groups"]
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema: 
+            type: string
+      requestBody:
+        required: true 
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                groupName:
+                  type: string
+                  minLength: 1
+                  maxLength: 16
+              required:
+                - groupName
+      responses: 
+        '200':
+          description: group name set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404': 
+            description: "group not found"
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    error:
+                      type: string
+                      example: "Group not found"
+
+
+        
   
   /conversations/{convId}:
     get:
@@ -376,4 +422,3 @@ components:
 #• uncommentMessage
 #• deleteMessage
 #• leaveGroup
-#• setGroupName
