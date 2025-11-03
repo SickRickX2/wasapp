@@ -297,7 +297,7 @@ paths:
                   error:
                     type: string
                     example: "Conversations not found"
-                    
+
   /conversations/{convId}/messages/messageId:
     delete: 
       operationId: deleteMessage
@@ -340,7 +340,51 @@ paths:
           description: conv not found
         '400':
           $ref: '#/components/responses/BadRequest'
-      
+
+  /conversations/{convId}/messages/{messageId}/forward:
+    post:
+      summary: Forward an existing message to this conversation
+      operationId: forwardMessage
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum: [forwarded]
+                  default: forwarded
+                text:
+                  type: string
+                  description: "optional message text override"
+                media:
+                  $ref: "#/components/schemas/Media"
+              required:
+                - kind
+      responses:
+        '200':
+          description: Message forwarded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        '404':
+          description: Message or conversation not found
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
 
 
