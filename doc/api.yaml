@@ -40,6 +40,7 @@ paths:
                   identifier:
                     type: string
                     example: "ciao12345"
+
   /users/{userId}/username:
     put:
       summary: set username 
@@ -267,9 +268,9 @@ components:
         status:
           type: string
           enum:
-            - "seen"
-            - "sent"
-            - "sending"
+            - seen
+            - sent
+            - sending
         text:
           type: string
           description: testo del messaggio (opzionale)
@@ -284,8 +285,15 @@ components:
           format: date-time
           example: "11:23"
         sender:
-          description: the user who sent the message
-          $ref: "#users/{userId}/username"   
+          description: ID of the sender
+          type: string
+        kind:
+          type: string
+          enum: 
+            - normal
+            - comment
+            - forwarded
+            - deleted
       anyOf:
         - required: ["text"]
         - required: ["media"]
@@ -362,7 +370,6 @@ components:
 
 
 #TODO: 
-#• getMyConversations
 #• sendMessage
 #• forwardMessage
 #• commentMessage
