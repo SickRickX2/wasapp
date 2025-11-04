@@ -133,6 +133,17 @@ paths:
                   maxItems: 20
               required:
                 - userIds
+      responses:
+        '200':
+          description: Group updated successfully, with new participants.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Group not found
 
   /conversations/{convId}/participants/{userId}:              
     delete:
@@ -152,7 +163,11 @@ paths:
             type: string
       responses:
         '200':
-          description: Successfully left the group
+          description: Successfully left the group. Returns the updated group.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
         '404':
           description: Group or user not found
 
@@ -295,26 +310,43 @@ paths:
                     example: "Conversations not found"
 
   /conversations/{convId}/messages/messageId:
-    delete: 
+    delete:
       tags: ["delete", "messages"]
       operationId: deleteMessage
-      summary: delete a message from conversation
+      summary: Mark a message as deleted 
+      description: 
+        Instead of physically removing the message, sets its status to "deleted".
+        The message remains in the conversation data but is treated as removed by clients.
       parameters:
-      - name: convId
-        in: path
-        required: true
-        schema:
-          type: string
-      - name: messageId
-        in: path
-        required: true
-        schema:
-          type: string
+        - name: convId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
       responses:
         '200':
-          description: message deleted successfully
+          description: Message marked as deleted, returns the updated resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+              example:
+                messageId: "xyz123"
+                status: "deleted"
+                text: null
+                media: null
+                sender: "pippo456"
+                kind: "deleted"
         '404':
-          description: message not found
+          description: Message not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
     post: 
       operationId: sendMessage
       tags: ["messages"]
@@ -332,7 +364,7 @@ paths:
             schema:
               $ref: "#/components/schemas/Message"
       responses:
-        '200':
+        '201':
           description: message sent successfully
         '404':
           description: conv not found
@@ -357,17 +389,17 @@ paths:
                 filename: "file.png"
                 mimeType: "image/png"
                 size: 12345
-        responses:
-          '200':
-            description: Message forwarded successfully
-            content:
-              application/json:
-                schema:
-                  $ref: "#/components/schemas/ForwardedMessage"
-          '404':
-            description: Message or conversation not found
-          '400':
-            $ref: '#/components/responses/BadRequest'
+      responses:
+        '201':
+          description: Message forwarded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForwardedMessage"
+        '404':
+          description: Message or conversation not found
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   /conversations/{convId}/messages/{messageId}/comments:
     post:
@@ -396,7 +428,7 @@ paths:
                 kind: comment
                 text: "this is a comment"
       responses:
-        '200':
+        '201':
           description: Message commented successfully
           content:
             application/json:
@@ -412,6 +444,7 @@ paths:
       operationId: uncommentMessage
       tags: ["delete", "comments"]
       summary: Delete a specific comment from a message
+      description: Permanently removes the specified comment or reaction from the message. The operation corresponds to “uncomment” (users can delete their reactions at any time).
       parameters:
         - name: convId
           in: path
@@ -429,12 +462,17 @@ paths:
           schema:
             type: string
       responses:
-          '204':
-            description: Comment deleted successfully
-          '404':
-            description: Comment not found
-          '400':
-            $ref: "#/components/responses/BadRequest"
+        '200':
+          description: Comment marked as deleted, returns the updated resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        '404':
+          description: Comment not found
+        '400':
+          $ref: "#/components/responses/BadRequest"
+
 
                   
 
@@ -477,6 +515,7 @@ components:
             - seen
             - sent
             - sending
+            - deleted
         text:
           type: string
           description: testo del messaggio (opzionale)
