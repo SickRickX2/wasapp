@@ -296,6 +296,7 @@ paths:
 
   /conversations/{convId}/messages/messageId:
     delete: 
+      tags: ["delete", "messages"]
       operationId: deleteMessage
       summary: delete a message from conversation
       parameters:
@@ -316,6 +317,7 @@ paths:
           description: message not found
     post: 
       operationId: sendMessage
+      tags: ["messages"]
       summary: the user send a message to the conversation
       parameters:
         - name: convId
@@ -339,6 +341,7 @@ paths:
 
   /conversations/{convId}/messages/{messageId}/forwarded:
     post:
+      tags: ["forwardedMessages"]
       summary: Forward an existing message to this conversation
       requestBody:
         required: true
@@ -369,6 +372,7 @@ paths:
   /conversations/{convId}/messages/{messageId}/comments:
     post:
       operationId: commentMessage
+      tags: ["comments"]
       summary: the user comments a specific message of the conversation
       parameters: 
         - name: convId
@@ -402,6 +406,35 @@ paths:
           description: Message or conversation not found
         '400':
           $ref: '#/components/responses/BadRequest'
+
+  /conversations/{convId}/messages/{messageId}/comments/{commentId}:
+    delete:
+      operationId: uncommentMessage
+      tags: ["delete", "comments"]
+      summary: Delete a specific comment from a message
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+          '204':
+            description: Comment deleted successfully
+          '404':
+            description: Comment not found
+          '400':
+            $ref: "#/components/responses/BadRequest"
 
                   
 
@@ -560,7 +593,3 @@ components:
               default: forwarded
           required:
             - kind
-
-
-#TODO: 
-#• uncommentMessage
