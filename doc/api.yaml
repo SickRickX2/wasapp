@@ -1,30 +1,51 @@
 openapi: 3.1.0
 servers:
-  - url: "http://localhost:3000"
+  - url: "http://localhost:3000/v1"
 info:
   title: WASAText
   description: WASAText; "Programmazione per il Web 2025/26"'s project
   version: 0.0.1
-
+tags:
+  - name: login
+    description: login operations
+  - name: set
+    description: Operations that let you set something
+  - name: groups
+    description: Operations that let you manipulate the groups
+  - name: get
+    description: Get Operations
+  - name: delete
+    description: Operations that let you delete something
+  - name: messages
+    description: Operations that are related to messages
+  - name: comments
+    description: Operations that are related to comments
+  - name: forwardedMessages
+    description: Operations related to forwardedMessages
+security:
+  - BearerAuth: []
 paths:
   /session:
     post:
       tags: ["login"]
       summary: logs in the user 
+      security: []
       description: |- 
         If the user doesnt exit, it will be created, 
         and an identifier is returned.
         If the user exists, the user identifier is returned.
       operationId: doLogin
       requestBody:
-        description: User details
+        description: User login request payload
         content:
           application/json:
             schema:
+              description: Display name of the user
               type: object
               properties:
                 name:
                   type: string
+                  description: name used by the user
                   example: Pippo
                   pattern: '^.*?$'
                   minLength: 3
@@ -36,12 +57,11 @@ paths:
           content:  
             application/json:
               schema:
+                description: Successful login response
                 type: object
                 properties:
-                  userId:
-                    type: string
-                    example: "ciao12345"
- 
+                  identifier:
+                    $ref: '#/components/schemas/UserId'
   /users/{userId}/username:
     put:
       summary: set username 
@@ -50,22 +70,25 @@ paths:
       tags: ["set"]
       parameters:
         - name: userId
+          description: user's id
           in: path
           required: true
           schema:
-            type: string
+            $ref: '#/components/schemas/UserId'
       requestBody:
-        description: UserName desired
         content: 
           application/json:
             schema: 
               type: object
+              description: UserName desired
               properties:
                 username:
+                  description: name used by the user
                   type: string
                   example: Pippox2
                   minLength: 3
                   maxLength: 16
+                  pattern: '^[A-Za-z0-9_-]+$'
         required: true
       responses:
         '200':
@@ -84,19 +107,25 @@ paths:
       tags: ["set"]
       parameters:
         - name: userId
+          description: user's id
           in: path
           required: true
           schema:
-            type: string
+            $ref: '#/components/schemas/UserId'
       requestBody:
         content:
           multipart/form-data:
             schema:
               type: object
+              description: profile picture
               properties:
                 pfp:
+                  description: user's profile picture
                   type: string
                   format: binary
+                  pattern: '^.+$'
+                  minLength: 1
+                  maxLength: 5242880 
         required: true
       responses: 
         '200':
@@ -110,25 +139,29 @@ paths:
   /conversations/{convId}/participants:
     post:
       summary: add a member to the group
+      description: add to the array list of the participants of the group an user
       operationId: addToGroup
       tags: ["groups"]
       parameters:
         - name: convId
+          description: conversation's id
           in: path
           required: true
-          schema:
-            type: string
+          schema: 
+            $ref: '#/components/schemas/ConversationId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              description: array of the users'id
               properties:
                 userIds:
+                  description: list of the users' id present in the group chat
                   type: array
                   items:
-                    type: string
+                    $ref: '#/components/schemas/UserId'
                   minItems: 1
                   maxItems: 20
               required:
@@ -143,24 +176,27 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
-          description: Group not found
+          $ref: '#/components/responses/NotFoundResponse'
 
   /conversations/{convId}/participants/{userId}:              
     delete:
+      description: Let the user leave a group chat
       operationId: leaveGroup
       summary: leave the group
-      tags: ["group"]
+      tags: ["groups"]
       parameters:
         - name: userId
+          description: user's id 
           in: path
           required: true
           schema:
-            type: string
+            $ref: '#/components/schemas/UserId'
         - name: convId
           in: path
           required: true
+          description: conversation's id
           schema: 
-            type: string
+            $ref: '#/components/schemas/ConversationId'
       responses:
         '200':
           description: Successfully left the group. Returns the updated group.
@@ -169,9 +205,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Group'
         '404':
-          description: Group or user not found
-
-  /conversations/{convId}/groupPhoto:
+          $ref: '#/components/responses/NotFoundResponse'
+  /conversations/{convId}/group_photo:
     put:
       summary: set the group photo
       description: the user sets the photo for the group conversation
@@ -181,17 +216,23 @@ paths:
         - name: convId
           in: path
           required: true
+          description: conversation's id
           schema:
-            type: string
+            $ref: '#/components/schemas/ConversationId'
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
+              description: photo of the group chat
               properties:
                 groupPhoto:
+                  description: group chat's photo
                   type: string
+                  pattern: '^.+$'
+                  minLength: 1
+                  maxLength: 5242880 
                   format: binary
       responses: 
         '200':
@@ -203,26 +244,31 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
-  /conversations/{convId}/groupName:
+  /conversations/{convId}/group_name:
     put:
       operationId: setGroupName
       description: the user sets the group name
+      summary: set the group name
       tags: ["set", "groups"]
       parameters:
         - name: convId
           in: path
           required: true
+          description: conversation's id
           schema: 
-            type: string
+            $ref: '#/components/schemas/ConversationId'
       requestBody:
         required: true 
         content:
           application/json:
             schema:
               type: object
+              description: group name to set
               properties:
                 groupName:
+                  description: group's name that can be modified by the users
                   type: string
+                  pattern: '^[A-Za-z0-9_-]+$'
                   minLength: 1
                   maxLength: 16
               required:
@@ -236,17 +282,8 @@ paths:
                 $ref: '#/components/schemas/Group'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '404': 
-            description: "group not found"
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: string
-                      example: "Group not found"
- 
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
   /conversations/{convId}:
     get:
       summary: get a specific conversation
@@ -255,10 +292,11 @@ paths:
       tags: ["groups","get"]
       parameters:
         - name: convId
+          description: conversation's id
           in: path
           required: true
           schema:
-            type: string
+            $ref: '#/components/schemas/ConversationId'
       responses:
         '200':
           description: conversation details
@@ -267,16 +305,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Conversation'
         '404':
-          description: conversation not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    example: "Conversation not found"
-
+          $ref: '#/components/responses/NotFoundResponse'
   /users/{userId}/conversations:
     get:
       summary: get all the conversations of the user
@@ -287,29 +316,28 @@ paths:
         - name: userId
           in: path
           required: true
+          description: user's id
           schema: 
-            type: string
+           $ref: '#/components/schemas/UserId'
       responses:
         '200':
           description: list of conversations
           content:
-           application/json:
-            schema:
-              type: array
-              items: 
-                $ref: "#/components/schemas/Conversation"
-        '404':
-          description: conversations not found
-          content:
             application/json:
               schema:
                 type: object
+                description: all the conversations of the user
                 properties:
-                  error:
-                    type: string
-                    example: "Conversations not found"
-
-  /conversations/{convId}/messages/messageId:
+                  conversations:
+                    description: array of all the conversations of the user
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Conversation"
+                    minItems: 0
+                    maxItems: 100
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+  /conversations/{convId}/messages/{messageId}:
     delete:
       tags: ["delete", "messages"]
       operationId: deleteMessage
@@ -321,13 +349,18 @@ paths:
         - name: convId
           in: path
           required: true
+          description: conversation's id
           schema:
-            type: string
+           $ref: '#/components/schemas/ConversationId'
         - name: messageId
           in: path
           required: true
+          description: message's id
           schema:
             type: string
+            pattern: '^[A-Za-z0-9_-]+$'
+            minLength: 1
+            maxLength: 64
       responses:
         '200':
           description: Message marked as deleted, returns the updated resource
@@ -338,57 +371,88 @@ paths:
               example:
                 messageId: "xyz123"
                 status: "deleted"
-                text: null
-                media: null
+                text: "This message has been deleted"
                 sender: "pippo456"
                 kind: "deleted"
         '404':
-          description: Message not found
+          $ref: '#/components/responses/NotFoundResponse'
         '400':
           $ref: "#/components/responses/BadRequest"
 
+#    post: 
+#      operationId: sendMessage
+#      tags: ["messages"]
+#      summary: the user send a message to the conversation
+#      parameters:
+#        - name: convId
+#          in: path
+#          required: true
+#          schema:
+#            type: string
+#      requestBody:
+#        required: true
+#        content:
+          #application/json:
+#            schema:
+#              $ref: "#/components/schemas/Message"
+#      responses:
+#        '201':
+#          description: message sent successfully
+#        '404':
+#          description: conv not found
+#        '400':
+#          $ref: '#/components/responses/BadRequest'
+  /conversation/{convId}/messages:
     post: 
-      operationId: sendMessage
-      tags: ["messages"]
-      summary: the user send a message to the conversation
-      parameters:
-        - name: convId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
+        operationId: sendMessage
+        tags: ["messages"]
+        summary: the user send a message to the conversation
+        description: Send a new message to the specified conversation.
+        parameters:
+          - name: convId
+            in: path
+            required: true
+            description: conversation's id
             schema:
-              $ref: "#/components/schemas/Message"
-      responses:
-        '201':
-          description: message sent successfully
-        '404':
-          description: conv not found
-        '400':
-          $ref: '#/components/responses/BadRequest'
+              $ref: '#/components/schemas/ConversationId'
+        requestBody:
+          required: true
+          description: Message payload to send
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        responses:
+          '204':
+            description: message sent successfully with no content
+          '404':
+            $ref: '#/components/responses/NotFoundResponse'
+          '400':
+            $ref: '#/components/responses/BadRequest'
 
   /conversations/{convId}/messages/{messageId}/forwarded:
     post:
+      operationId: forwardMessage
       tags: ["forwardedMessages"]
       summary: Forward an existing message to this conversation
-      requestBody:
+      description: |
+        Creates a forwarded copy of an existing message within the specified conversation.
+        The forwarded message retains the original content but is marked as "forwarded".
+      parameters:
+      - name: convId
+        in: path
         required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ForwardedMessage'
-            example:
-              kind: forwarded
-              text: "optional text"
-              media:
-                url: "https://example.com/file.png"
-                filename: "file.png"
-                mimeType: "image/png"
-                size: 12345
+        description: conversation's id
+        schema:
+          $ref: '#/components/schemas/ConversationId'
+      - name: messageId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[A-Za-z0-9_-]+$'
+          minLength: 1
+          maxLength: 64
       responses:
         '201':
           description: Message forwarded successfully
@@ -397,7 +461,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ForwardedMessage"
         '404':
-          description: Message or conversation not found
+          $ref: '#/components/responses/NotFoundResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
 
@@ -405,28 +469,24 @@ paths:
     post:
       operationId: commentMessage
       tags: ["comments"]
+      description: |
+        Adds a comment to a specific message within the specified conversation.
+        The comment is treated as a separate message linked to the original message.
       summary: the user comments a specific message of the conversation
       parameters: 
         - name: convId
           in: path
           required: true
           schema: 
-            type: string
+            $ref: '#/components/schemas/ConversationId'
         - name: messageId
           in: path
           required: true
           schema:
             type: string
-
-      requestBody:
-        required: true
-        content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Comment'
-              example:
-                kind: comment
-                text: "this is a comment"
+            pattern: '^[A-Za-z0-9_-]+$'
+            minLength: 1
+            maxLength: 64
       responses:
         '201':
           description: Message commented successfully
@@ -435,7 +495,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Comment"
         '404':
-          description: Message or conversation not found
+          $ref: '#/components/responses/NotFoundResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
 
@@ -450,17 +510,23 @@ paths:
           in: path
           required: true
           schema:
-            type: string
+            $ref: '#/components/schemas/ConversationId'
         - name: messageId
           in: path
           required: true
           schema:
             type: string
+            pattern: '^[A-Za-z0-9_-]+$'
+            minLength: 1
+            maxLength: 64
         - name: commentId
           in: path
           required: true
           schema:
             type: string
+            pattern: '^[A-Za-z0-9_-]+$'
+            minLength: 1
+            maxLength: 64
       responses:
         '200':
           description: Comment marked as deleted, returns the updated resource
@@ -469,7 +535,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Comment"
         '404':
-          description: Comment not found
+          $ref: '#/components/responses/NotFoundResponse'
         '400':
           $ref: "#/components/responses/BadRequest"
 
@@ -477,89 +543,183 @@ paths:
                   
 
 components:
+  securitySchemes:
+    BearerAuth:
+      description: Bearer authentication with a token identifier
+      type: http
+      scheme: bearer
+      bearerFormat: identifier
+      
   responses:
-    BadRequest:   
+    BadRequest:
       description: The request was not compliant with the documentation (eg. missing fields, etc)
+      content:
+        application/json:
+          schema:
+            type: object
+            description: Error payload for invalid requests
+            properties:
+              description:
+                type: string
+                description: Human-readable error description
+                pattern: '^[A-Za-z0-9_-]+$'
+                minLength: 1
+                maxLength: 64
+            required:
+              - description
+    NotFoundResponse:    
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NotFound'
+
+
   schemas:
     User:
       type: object
       description: User profile in the system
       properties:
         userId:
-          type: string
-          description: Unique user identifier
+          $ref: '#/components/schemas/UserId'
         userName:
+          description: name used by the user
           type: string
           minLength: 3
           maxLength: 16
+          pattern: '^[A-Za-z0-9_-]+$'
           example: Pippox2
         pfp:
           type: string
-          format: uri
+          format: url
           description: URL of profile picture
+          pattern: '^https?://.+$'
+          minLength: 10
+          maxLength: 2048
         createdAt:
           type: string
           format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$'
+          minLength: 20
+          maxLength: 20
           description: User creation date
       required:
         - userId
         - userName
 
+    NotFound:
+      description: Not found error payload
+      type: object
+      properties:
+        message:
+          description: message of the not found error
+          type: string
+          pattern: '^[A-Za-z0-9_-]+$'
+          minLength: 1
+          maxLength: 64
+      required:
+        - message
+
+    UserId:
+      type: string
+      description: Unique identifier of the user
+      pattern: '^usr_[A-Za-z0-9_-]{3,60}$'
+      minLength: 7      # "usr_" (4) + minimo 3 = 7
+      maxLength: 64
+      example: 'usr_a1B2c3'
+
+    ConversationId:
+      type: string
+      description: Unique identifier of the conversation
+      pattern: '^conv_[A-Za-z0-9_-]{3,60}$'
+      minLength: 8      # "conv_" (5) + minimo 3 = 8
+      maxLength: 64
+      example: 'conv_XyZ123'
+
+    MessageId:
+      type: string
+      description: Unique identifier of the message
+      pattern: '^msg_[A-Za-z0-9_-]{3,60}$'
+      minLength: 7      # "msg_" (4) + minimo 3 = 7
+      maxLength: 64
+      example: 'msg_9aBcDe'
+
+    CommentId:
+      type: string
+      description: Unique identifier of the comment
+      pattern: '^cmt_[A-Za-z0-9_-]{3,60}$'
+      minLength: 7      # "cmt_" (4) + minimo 3 = 7
+      maxLength: 64
+      example: 'cmt_123AbC'
+
+
+
     Message:
       type: object
-      description: message sent by an user
+      description: message sent by an user. Server requires at least one between text and media.
       properties:
         status:
+          description: status of the message
           type: string
-          enum:
-            - seen
-            - sent
-            - sending
-            - deleted
+          enum: [seen, sent, sending, deleted]
+          pattern: '^(seen|sent|sending|deleted)$'
+          minLength: 4
+          maxLength: 7
         text:
           type: string
-          description: testo del messaggio (opzionale)
+          description: message's text (optional but text or media are required)
+          pattern: '^.+$'
           minLength: 1
           maxLength: 150
         media:
           $ref: '#/components/schemas/Media'
-          description: media del messaggio (opzionale)
         time:
           description: time that message was sent 
           type: string
           format: date-time
-          example: "11:23"
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$'
+          minLength: 20
+          maxLength: 20
         sender:
           description: ID of the sender
           type: string
+          pattern: '^[A-Za-z0-9_-]+$'
+          minLength: 1
+          maxLength: 64
         messageId:
           type: string
           description: Unique identifier for the message
+          pattern: '^[A-Za-z0-9_-]+$'
+          minLength: 1
+          maxLength: 64
         kind:
+          description: Discriminator for the message type
           type: string
-          enum: 
-            - normal
-            - comment
-            - forwarded
-            - deleted
-      anyOf:
-        - required: ["text"]
-        - required: ["media"]
+          enum: [normal, comment, forwarded, deleted]
 
     Media:
       type: object
-      description: Oggetto che rappresenta un'immagine allegata al messaggio
+      description: media attached to a message or can be the only message
       properties:
         url:
           type: string
-          format: uri
+          format: url
           description: URL of image
+          pattern: '^https?://.+$'
+          minLength: 10
+          maxLength: 2048
         filename:
           type: string
           description: file image name
+          pattern: '^[A-Za-z0-9._-]{1,255}$'
+          minLength: 1
+          maxLength: 255
         mimeType:
           type: string
           description: image/png, image/jpeg
+          pattern: '^image/(png|jpeg|jpg|gif)$'
+          minLength: 10
+          maxLength: 20
         size:
           type: integer
           description: image size in byte
@@ -569,24 +729,27 @@ components:
 
     Conversation: 
       type: object
+      description: Conversation between users, including participants and messages
       properties:
         convId: 
-          type: string
-          example: g2074f-f34567
-          description: "Conversation identifier"
+          $ref: '#/components/schemas/ConversationId'
 
         participants:
-          type:
-            array
+          type: array
+          description: List of user IDs that participate in the conversation
           items: 
-            description: List of ID of the users that participate the conversation
-            type: string
+            $ref: '#/components/schemas/UserId'
+          minItems: 1
+          maxItems: 100
+
         messages:
-          type:
-            array
+          type: array
+          description: List of messages sent by the users
           items:
-            description: List of messages sent by the users
-    
+            $ref: "#/components/schemas/Message"
+          minItems: 0
+          maxItems: 1000
+
     Group:
       allOf:
         - $ref: '#/components/schemas/Conversation'
@@ -596,19 +759,27 @@ components:
             groupName:
               type: string
               description: Group name
-              default: "New Group"
+              default: "New_Group"
+              pattern: '^[A-Za-z0-9_-]+$'
+              minLength: 1
+              maxLength: 64
             groupPhoto: 
               type: string
-              format: binary              
+              format: binary
+              description: Binary content of the group profile picture
+              pattern: '^.+$'
+              minLength: 1
+              maxLength: 5242880
             participants:
               type: array
+              description: IDs of the users that belong to the group
               items:
-                type: string
+                $ref: '#/components/schemas/UserId'
               minItems: 2     
               maxItems: 100
           required:
             - participants  
-            
+
     Comment:
       allOf:
         - $ref: '#/components/schemas/Message'
@@ -618,6 +789,10 @@ components:
               type: string
               enum: [comment]
               default: comment
+              description: Discriminator indicating that this message is a comment
+              pattern: '^comment$'
+              minLength: 7
+              maxLength: 7
           required:
             - kind
 
@@ -630,5 +805,73 @@ components:
               type: string
               enum: [forwarded]
               default: forwarded
+              description: Discriminator indicating that this message is forwarded
+              pattern: '^forwarded$'
+              minLength: 9
+              maxLength: 9
           required:
             - kind
+    
+
+            
+    
+    # Group:
+    #   allOf:
+    #     - $ref: '#/components/schemas/Conversation'
+    #     - type: object
+    #       description: conversation with at least 2 users or more with option to set a name and a pic 
+    #       properties:
+    #         groupName:
+    #           type: string
+    #           description: Group name
+    #           default: "New Group"
+    #           pattern: '^[A-Za-z0-9_-]+$'
+    #           minLength: 1
+    #           maxLength: 64
+    #         groupPhoto: 
+    #           type: string
+    #           format: binary
+    #           pattern: '^.+$'
+    #           minLength: 1
+    #           maxLength: 5242880              
+    #         participants:
+    #           type: array
+    #           items:
+    #             type: string
+    #             pattern: '^[A-Za-z0-9_-]+$'
+    #             minLength: 1
+    #             maxLength: 64
+    #           minItems: 2     
+    #           maxItems: 100
+    #       required:
+    #         - participants  
+            
+    # Comment:
+    #   allOf:
+    #     - $ref: '#/components/schemas/Message'
+    #     - type: object
+    #       properties:
+    #         kind:
+    #           type: string
+    #           enum: [comment]
+    #           default: comment
+    #           pattern: '^comment$'
+    #           minLength: 7
+    #           maxLength: 7
+    #       required:
+    #         - kind
+
+    # ForwardedMessage:
+      # allOf:
+      #   - $ref: '#/components/schemas/Message'
+      #   - type: object
+      #     properties:
+      #       kind:
+      #         type: string
+      #         enum: [forwarded]
+      #         default: forwarded
+      #         pattern: '^forwarded$'
+      #         minLength: 9
+      #         maxLength: 9
+      #     required:
+      #       - kind
