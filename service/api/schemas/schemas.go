@@ -17,27 +17,36 @@ const (
 
 	StatusSent      Status = "sent"
 	StatusDelivered Status = "delivered"
-	StatusRead      Status = "seen"
+	StatusSeen      Status = "seen"
 	StatusDeleted   Status = "deleted"
 	StatusSending   Status = "sending"
 )
 
 type User struct {
-	ID        UserId    `json:"userId"`
-	Name      string    `json:"name"`
-	UserName  string    `json:"userName,omitempty"`
+	UserId    UserId    `json:"userId"`
+	UserName  string    `json:"userName"`
 	PfpURL    *string   `json:"pfp,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
 type Message struct {
-	ID       MessageId `json:"messageId"`
-	SenderID UserId    `json:"senderId"`
-	Status   Status    `json:"status"`
-	Text     string    `json:"text"`
-	Media    Media     `json:"media,omitempty"`
-	Kind     Kind      `json:"kind"`
-	SentAt   time.Time `json:"time"`
+	MessageId MessageId `json:"messageId"`
+	Sender    UserId    `json:"sender"`
+	Status    Status    `json:"status"`
+	Kind      Kind      `json:"kind"`
+	Time      time.Time `json:"time"`
+	Text      *string   `json:"text,omitempty"`
+	Media     *Media    `json:"media,omitempty"`
+}
+
+type Comment struct {
+	Message
+}
+
+// ForwardedMessage implementa lo schema ForwardedMessage (usa allOf: [Message])
+// Embedding per ereditare tutti i campi di Message.
+type ForwardedMessage struct {
+	Message
 }
 
 type Media struct {
@@ -52,18 +61,15 @@ type NotFound struct {
 }
 
 type Conversation struct {
-	ID             ConversationId `json:"ConversationId"`
-	ParticipantIDs []UserId       `json:"participantIds"`
-	CreatedAt      time.Time      `json:"createdAt"`
+	ID             ConversationId `json:"convId"`
+	ParticipantIDs []UserId       `json:"participants"`
 	LastMessage    *Message       `json:"lastMessage,omitempty"`
 	Messages       []Message      `json:"messages,omitempty"`
 }
 type Group struct {
-	ID             ConversationId `json:"conversationId"`
-	Name           string         `json:"groupName"`
-	Photo          *string        `json:"groupPhoto,omitempty"`
-	ParticipantIDs []UserId       `json:"participants"`
-	CreatedAt      time.Time      `json:"createdAt"`
-	LastMessage    *Message       `json:"lastMessage,omitempty"`
-	Messages       []Message      `json:"messages,omitempty"`
+	Conversation
+	Name  string  `json:"groupName"`
+	Photo *string `json:"groupPhoto,omitempty"`
+
+	CreatedAt time.Time `json:"createdAt"`
 }
