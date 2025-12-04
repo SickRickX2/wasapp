@@ -34,13 +34,16 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // AppDatabase is the high level interface for the DB
 type AppDatabase interface {
 	GetName() (string, error)
 	SetName(name string) error
-	PostSession(identifier string) error
+	FindUserByName(name string) (string, error)
+	CreateUser(identifier string, name string) error
 
 	Ping() error
 }
@@ -63,10 +66,12 @@ func New(db *sql.DB) (AppDatabase, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		// La tabella 'users' non esiste, creala.
 		sqlStmt := `
-            CREATE TABLE users (
-                identifier VARCHAR(12) NOT NULL PRIMARY KEY,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
+            CREATE TABLE "Users" (
+				"userName" TEXT NOT NULL UNIQUE,
+                "identifier" TEXT NOT NULL PRIMARY KEY,
+                "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+				"PFPURL" TEXT
+          );
         `
 		_, err = db.Exec(sqlStmt)
 		if err != nil {
@@ -97,7 +102,7 @@ func (db *appdbimpl) Ping() error {
 
 /* TODO
 --Tabelle--
-- Users
+ |Users|-> fatto
 - Conversations
 - Groups(?) non lo so perché dovrebbero essere delle sottoclassi di Conversations
 - Messages
