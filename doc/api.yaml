@@ -632,25 +632,25 @@ components:
       type: string
       description: Unique identifier of the conversation
       pattern: '^conv_[A-Za-z0-9_-]{3,60}$'
-      minLength: 8      # "conv_" (5) + minimo 3 = 8
-      maxLength: 64
-      example: 'conv_XyZ123'
+      minLength: 12     
+      maxLength: 12
+      example: 'conv_XyZ12345'
 
     MessageId:
       type: string
       description: Unique identifier of the message
       pattern: '^msg_[A-Za-z0-9_-]{3,60}$'
-      minLength: 7      # "msg_" (4) + minimo 3 = 7
-      maxLength: 64
-      example: 'msg_9aBcDe'
+      minLength: 12
+      maxLength: 12
+      example: 'msg_9aBcDEf23'
 
     CommentId:
       type: string
       description: Unique identifier of the comment
       pattern: '^cmt_[A-Za-z0-9_-]{3,60}$'
-      minLength: 7      # "cmt_" (4) + minimo 3 = 7
-      maxLength: 64
-      example: 'cmt_123AbC'
+      minLength: 12
+      maxLength: 12
+      example: 'cmt_123AbC123'
 
 
 
