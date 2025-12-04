@@ -40,6 +40,7 @@ import (
 type AppDatabase interface {
 	GetName() (string, error)
 	SetName(name string) error
+	PostSession(identifier string) error
 
 	Ping() error
 }
@@ -57,7 +58,26 @@ func New(db *sql.DB) (AppDatabase, error) {
 
 	// Check if table exists. If not, the database is empty, and we need to create the structure
 	var tableName string
-	err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='example_table';`).Scan(&tableName)
+	// TABLE USERS
+	err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='users';`).Scan(&tableName)
+	if errors.Is(err, sql.ErrNoRows) {
+		// La tabella 'users' non esiste, creala.
+		sqlStmt := `
+            CREATE TABLE users (
+                identifier VARCHAR(12) NOT NULL PRIMARY KEY,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+        `
+		_, err = db.Exec(sqlStmt)
+		if err != nil {
+			return nil, fmt.Errorf("error creating 'users' table: %w", err)
+		}
+	} else if err != nil {
+		// Se c'è un errore nella query (es. connessione), fallo risalire
+		return nil, fmt.Errorf("error querying 'users' table existence: %w", err)
+	}
+	// --------------------------------------------------------
+	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='example_table';`).Scan(&tableName)
 	if errors.Is(err, sql.ErrNoRows) {
 		sqlStmt := `CREATE TABLE example_table (id INTEGER NOT NULL PRIMARY KEY, name TEXT);`
 		_, err = db.Exec(sqlStmt)
