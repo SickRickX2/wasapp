@@ -82,6 +82,62 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error querying 'users' table existence: %w", err)
 	}
 	// --------------------------------------------------------
+	// TABLE CONVERSATIONS
+	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='conversations';`).Scan(&tableName)
+	if errors.Is(err, sql.ErrNoRows) {
+		sqlStmt := `CREATE TABLE conversations (
+                -- ID: L'identificatore principale.
+                convId VARCHAR(12) NOT NULL PRIMARY KEY,
+                
+                -- CAMPI GRUPPO (Usati solo se kind='group')
+                groupName TEXT DEFAULT NULL, 
+                groupPhoto TEXT DEFAULT NULL, 
+                
+                -- DISCRIMINATORE: Permette di distinguere tra chat 1-a-1 e gruppi.
+                kind TEXT NOT NULL DEFAULT 'private', 
+                
+                -- Data di creazione automatica
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            );`
+		_, err = db.Exec(sqlStmt)
+		if err != nil {
+			return nil, fmt.Errorf("error creating 'conversations' table: %w", err)
+		}
+	} else if err != nil {
+		// Se c'è un errore nella query (es. connessione), fallo risalire
+		return nil, fmt.Errorf("error querying 'conversations' table existence: %w", err)
+	}
+	// --------------------------------------------------------
+	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='conversation_participants';`).Scan(&tableName)
+	if errors.Is(err, sql.ErrNoRows) {
+		// La tabella 'users' non esiste, creala.
+		/*
+				ID             ConversationId `json:"convId"`
+			ParticipantIDs []UserId       `json:"participants"`
+			LastMessage    *Message       `json:"lastMessage,omitempty"`
+			Messages       []Message      `json:"messages,omitempty"`
+			//cant add two times the same user to the same conversation
+		*/
+		sqlStmt := `
+            CREATE TABLE conversation_participants (
+                convId VARCHAR(12) NOT NULL,
+                userId VARCHAR(12) NOT NULL,
+                
+                PRIMARY KEY (convId, userId),
+    
+                FOREIGN KEY (convId) REFERENCES conversations(convId) ON DELETE CASCADE,
+                FOREIGN KEY (userId) REFERENCES users(userId) ON DELETE CASCADE
+            );
+        `
+		_, err = db.Exec(sqlStmt)
+		if err != nil {
+			return nil, fmt.Errorf("error creating 'conversation_participants' table: %w", err)
+		}
+	} else if err != nil {
+		// Se c'è un errore nella query (es. connessione), fallo risalire
+		return nil, fmt.Errorf("error querying 'conversation_participants' table existence: %w", err)
+	}
+	// --------------------------------------------------------
 	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='example_table';`).Scan(&tableName)
 	if errors.Is(err, sql.ErrNoRows) {
 		sqlStmt := `CREATE TABLE example_table (id INTEGER NOT NULL PRIMARY KEY, name TEXT);`
