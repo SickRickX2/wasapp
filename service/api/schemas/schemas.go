@@ -25,7 +25,7 @@ const (
 type User struct {
 	UserId    UserId    `json:"userId"`
 	UserName  string    `json:"userName"`
-	PfpURL    *string   `json:"pfp,omitempty"`
+	PFPURL    *string   `json:"pfp,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -65,6 +65,7 @@ type Conversation struct {
 	ParticipantIDs []UserId       `json:"participants"`
 	LastMessage    *Message       `json:"lastMessage,omitempty"`
 	Messages       []Message      `json:"messages,omitempty"`
+	Kind           string
 }
 type Group struct {
 	Conversation

@@ -108,16 +108,32 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error querying 'conversations' table existence: %w", err)
 	}
 	// --------------------------------------------------------
+	//TABLE MESSAGES
+	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='Messages';`).Scan(&tableName)
+	if errors.Is(err, sql.ErrNoRows) {
+		sqlStmt := `CREATE TABLE Messages (
+				messageId VARCHAR(12) NOT NULL PRIMARY KEY,
+				convId VARCHAR(12) NOT NULL,	
+				senderId VARCHAR(12) NOT NULL,
+				content TEXT NOT NULL,
+				sentAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+				FOREIGN KEY (convId) REFERENCES conversations(convId) ON DELETE CASCADE,
+				FOREIGN KEY (senderId) REFERENCES users(userId) ON DELETE CASCADE
+			);`
+		_, err = db.Exec(sqlStmt)
+		if err != nil {
+			return nil, fmt.Errorf("error creating 'Messages' table: %w", err)
+		}
+	} else if err != nil {
+		// Se c'è un errore nella query (es. connessione), fallo risalire
+		return nil, fmt.Errorf("error querying 'Messages' table existence: %w", err)
+	}
+	// --------------------------------------------------------
+	// TABLE CONVERSATION_PARTICIPANTS
+
 	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='conversation_participants';`).Scan(&tableName)
 	if errors.Is(err, sql.ErrNoRows) {
-		// La tabella 'users' non esiste, creala.
-		/*
-				ID             ConversationId `json:"convId"`
-			ParticipantIDs []UserId       `json:"participants"`
-			LastMessage    *Message       `json:"lastMessage,omitempty"`
-			Messages       []Message      `json:"messages,omitempty"`
-			//cant add two times the same user to the same conversation
-		*/
 		sqlStmt := `
             CREATE TABLE conversation_participants (
                 convId VARCHAR(12) NOT NULL,
@@ -159,8 +175,11 @@ func (db *appdbimpl) Ping() error {
 /* TODO
 --Tabelle--
  |Users|-> fatto
-- Conversations
-- Groups(?) non lo so perché dovrebbero essere delle sottoclassi di Conversations
-- Messages
+- |Conversations|-> fatto
+- |ConversationParticipants|-> fatto
+- Groups(?) -> in teoria fatto
+- |Messages|-> fatto
 - Comments
+- Reactions
+- Media
 */
