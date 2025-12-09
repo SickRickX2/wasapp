@@ -100,18 +100,40 @@ paths:
         '400' : { $ref: "#/components/responses/BadRequest" }
 
   /users/{userId}/pfp:
+    get:
+      summary: Ottiene l'URL della foto profilo
+      description: Recupera l'URL pubblico della foto profilo di un utente specifico.
+      operationId: getPhotoUrl
+      tags: ["user_management"]
+      parameters:
+        - name: userId
+          description: ID dell'utente di cui si vuole recuperare la foto profilo.
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/UserId'
+      responses:
+        '200':
+          description: URL della foto profilo recuperato con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pfpUrl:
+                    type: string
+                    format: url
+                    description: L'URL pubblico della foto profilo.
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+
+  /users/me/pfp:
     put: 
       summary: set profile picture
       description: the user set the profile picture that other users will see while texting with him
       operationId: setMyPhoto
       tags: ["set"]
-      parameters:
-        - name: userId
-          description: user's id
-          in: path
-          required: true
-          schema:
-            $ref: '#/components/schemas/UserId'
+      parameters: []
       requestBody:
         content:
           multipart/form-data:
@@ -135,6 +157,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
         '400' : { $ref: "#/components/responses/BadRequest" }
+        '401' : { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      summary: Rimuove la foto profilo
+      description: Rimuove l'immagine corrente dell'utente autenticato, tornando all'immagine di default (o a null).
+      operationId: deleteMyPhoto
+      tags: ["user_management"]
+      responses:
+        '200':
+          description: Foto profilo rimossa con successo. Viene restituito lo stato aggiornato.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pfpUrl:
+                    type: string
+                    format: url
+                    description: L'URL della foto profilo dopo la rimozione (sarà l'URL di default).
+        '401' : { $ref: "#/components/responses/Unauthorized" }
     
   /conversations/{convId}/participants:
     post:
@@ -178,19 +219,13 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundResponse'
 
-  /conversations/{convId}/participants/{userId}:              
+  /conversations/{convId}/participants/me:              
     delete:
       description: Let the user leave a group chat
       operationId: leaveGroup
       summary: leave the group
       tags: ["groups"]
       parameters:
-        - name: userId
-          description: user's id 
-          in: path
-          required: true
-          schema:
-            $ref: '#/components/schemas/UserId'
         - name: convId
           in: path
           required: true
@@ -206,6 +241,7 @@ paths:
                 $ref: '#/components/schemas/Group'
         '404':
           $ref: '#/components/responses/NotFoundResponse'
+
   /conversations/{convId}/group_photo:
     put:
       summary: set the group photo
@@ -573,6 +609,22 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/NotFound'
+    Unauthorized:
+      description: Unauthorized - Authentication required or invalid credentials
+      content:
+        application/json:
+          schema:
+            type: object
+            description: Error payload for unauthorized requests
+            properties:
+              description:
+                type: string
+                description: Human-readable error description
+                pattern: '^[A-Za-z0-9_-]+$'
+                minLength: 1
+                maxLength: 64
+            required:
+              - description
 
 
   schemas:
