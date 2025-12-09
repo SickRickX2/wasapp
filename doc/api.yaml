@@ -767,11 +767,11 @@ components:
               maxLength: 64
             groupPhoto: 
               type: string
-              format: binary
-              description: Binary content of the group profile picture
-              pattern: '^.+$'
-              minLength: 1
-              maxLength: 5242880
+              format: url
+              description: url of the group photo
+              pattern: '^https?://.+$'
+              minLength: 10
+              maxLength: 2048
             participants:
               type: array
               description: IDs of the users that belong to the group
