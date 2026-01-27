@@ -62,6 +62,22 @@ paths:
                 properties:
                   identifier:
                     $ref: '#/components/schemas/UserId'
+
+    delete:
+        tags: ["login"]
+        summary: Logout the user
+        description: |
+          Invalidates the current session token. 
+          Effectively logs the user out from the server side.
+        operationId: doLogout
+        security:
+          - BearerAuth: []  
+        responses:
+          '204':
+            description: Logout successful. No content returned.
+          '401':
+            $ref: '#/components/responses/Unauthorized'
+
   /users/{userId}/username:
     put:
       summary: set username 
@@ -466,6 +482,36 @@ paths:
           '400':
             $ref: '#/components/responses/BadRequest'
 
+    get:
+      summary: Get conversation history
+      description: Retrieve messages from a conversation (with pagination)
+      tags: ["messages", "get"]
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ConversationId'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: beforeId
+          in: query
+          description: Message ID to start pagination from (cursor)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of messages in the conversation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+
   /conversations/{convId}/messages/{messageId}/forwarded:
     post:
       operationId: forwardMessage
@@ -574,6 +620,28 @@ paths:
           $ref: '#/components/responses/NotFoundResponse'
         '400':
           $ref: "#/components/responses/BadRequest"
+
+  /users:
+      get:
+        summary: Search users
+        description: Search for users by part of their name
+        tags: ["get"]
+        parameters:
+          - name: q
+            in: query
+            description: The string to search in usernames
+            schema:
+              type: string
+              minLength: 1
+        responses:
+          '200':
+            description: List of matching users
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/User'
 
 
                   
