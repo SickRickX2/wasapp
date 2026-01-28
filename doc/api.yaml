@@ -50,6 +50,8 @@ paths:
                   pattern: '^.*?$'
                   minLength: 3
                   maxLength: 16
+              required: 
+                - name
         required: true
       responses:
         '201':
@@ -62,6 +64,9 @@ paths:
                 properties:
                   identifier:
                     $ref: '#/components/schemas/UserId'
+                required:
+                  - identifier
+        '400' : { $ref: "#/components/responses/BadRequest" }
 
     delete:
         tags: ["login"]
@@ -192,7 +197,82 @@ paths:
                     format: url
                     description: L'URL della foto profilo dopo la rimozione (sarà l'URL di default).
         '401' : { $ref: "#/components/responses/Unauthorized" }
-    
+
+  /conversations:
+      post:
+        summary: Start a private conversation
+        description: |
+          Creates a new private 1-to-1 conversation with another user. 
+          **Idempotency:** If a private conversation with this user already exists, the server returns the existing conversation instead of creating a new one.
+        operationId: createPrivateConversation
+        tags: ["conversations"]
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recipientId:
+                    description: The User ID of the person you want to talk to.
+                    $ref: '#/components/schemas/UserId'
+                required:
+                  - recipientId
+        responses:
+          '200':
+            description: Conversation created or retrieved successfully.
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Conversation'
+          '404':
+            description: Recipient user not found.
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/NotFound'
+          '400':
+            $ref: '#/components/responses/BadRequest'
+
+  /groups:
+      post:
+        summary: Create a new group
+        description: Creates a new group chat with a name and a list of initial participants.
+        operationId: createGroup
+        tags: ["groups"]
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groupName:
+                    type: string
+                    description: The name of the group.
+                    minLength: 1
+                    maxLength: 30
+                    example: "Study Group 2026"
+                  participants:
+                    type: array
+                    description: List of User IDs to add to the group immediately.
+                    items:
+                      $ref: '#/components/schemas/UserId'
+                    minItems: 0
+                    maxItems: 100
+                required:
+                  - groupName
+                  - participants
+        responses:
+          '201':
+            description: Group created successfully.
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Group'
+          '400':
+            $ref: '#/components/responses/BadRequest'
+
   /conversations/{convId}/participants:
     post:
       summary: add a member to the group
@@ -454,7 +534,8 @@ paths:
 #          description: conv not found
 #        '400':
 #          $ref: '#/components/responses/BadRequest'
-  /conversation/{convId}/messages:
+
+  /conversations/{convId}/messages:
     post: 
         operationId: sendMessage
         tags: ["messages"]
@@ -652,7 +733,7 @@ components:
       description: Bearer authentication with a token identifier
       type: http
       scheme: bearer
-      bearerFormat: identifier
+      bearerFormat: userId
       
   responses:
     BadRequest:
@@ -850,9 +931,19 @@ components:
     Conversation: 
       type: object
       description: Conversation between users, including participants and messages
+      discriminator:
+        propertyName: type
+        mapping:
+          private: '#/components/schemas/Conversation'
+          group: '#/components/schemas/Group'
       properties:
         convId: 
           $ref: '#/components/schemas/ConversationId'
+        type:
+          type: string
+          enum: [private, group]
+          description: Discriminator to distinguish between 1-to-1 and groups
+          default: private
 
         participants:
           type: array
@@ -862,22 +953,29 @@ components:
           minItems: 1
           maxItems: 100
 
-        messages:
-          type: array
-          description: List of messages sent by the users
-          items:
-            $ref: "#/components/schemas/Message"
-          minItems: 0
-          maxItems: 1000
         lastMessage:
           $ref: '#/components/schemas/Message'
-
+          description: Preview of the last message sent (for the list view)
+        unreadCount:
+           type: integer
+           description: Number of unread messages (optional UI helper)
+           default: 0
+      required:
+        - convId
+        - participants
+        - type
+    
     Group:
       allOf:
         - $ref: '#/components/schemas/Conversation'
         - type: object
           description: conversation with at least 2 users or more with option to set a name and a pic 
           properties:
+            type: 
+              type: string
+              enum: [group]
+              default: group
+              description: Discriminator indicating that this conversation is a group
             groupName:
               type: string
               description: Group name
@@ -897,7 +995,7 @@ components:
               description: IDs of the users that belong to the group
               items:
                 $ref: '#/components/schemas/UserId'
-              minItems: 2     
+              minItems: 1     
               maxItems: 100
             createdAt:
               type: string
