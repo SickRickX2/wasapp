@@ -667,7 +667,7 @@ paths:
       operationId: uncommentMessage
       tags: ["delete", "comments"]
       summary: Delete a specific comment from a message
-      description: Permanently removes the specified comment or reaction from the message. The operation corresponds to “uncomment” (users can delete their reactions at any time).
+      description: Permanently removes the specified comment from the message. The operation corresponds to “uncomment”.
       parameters:
         - name: convId
           in: path
@@ -723,6 +723,80 @@ paths:
                   type: array
                   items:
                     $ref: '#/components/schemas/User'
+  
+
+  /conversations/{convId}/messages/{messageId}/reaction:
+    put:
+      tags: ["messages"]
+      summary: React to a message
+      description: |
+        Adds or updates the user's reaction to a message.
+        If the user already reacted, the old reaction is replaced with the new emoji.
+        This enforces a "one reaction per user" policy (like WhatsApp/Instagram).
+      operationId: setReaction
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ConversationId'
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/MessageId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                emoji:
+                  type: string
+                  description: The emoji to react with
+                  minLength: 1
+                  maxLength: 4
+                  example: "👍"
+              required:
+                - emoji
+      responses:
+        '200':
+          description: Reaction set successfully. Returns the updated message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+
+    delete:
+      tags: ["messages"]
+      summary: Remove reaction
+      description: Removes the user's reaction from the message (Un-react).
+      operationId: deleteReaction
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ConversationId'
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/MessageId'
+      responses:
+        '200':
+          description: Reaction removed successfully. Returns the updated message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
 
 
                   
@@ -874,6 +948,13 @@ components:
           maxLength: 150
         media:
           $ref: '#/components/schemas/Media'
+        reactions:
+          type: array
+          description: List of reactions added to this message
+          items:
+            $ref: '#/components/schemas/Reaction'
+          minItems: 0
+          maxItems: 100
         time:
           description: time that message was sent 
           type: string
@@ -965,6 +1046,22 @@ components:
         - participants
         - type
     
+    Reaction:
+      type: object
+      description: A reaction (emoji) added by a user to a message
+      properties:
+        userId:
+          $ref: '#/components/schemas/UserId'
+        emoji:
+          type: string
+          description: The emoji character
+          minLength: 1
+          maxLength: 4 
+      required:
+        - userId
+        - emoji
+
+
     Group:
       allOf:
         - $ref: '#/components/schemas/Conversation'
