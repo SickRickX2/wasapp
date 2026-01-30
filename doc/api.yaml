@@ -4,7 +4,7 @@ servers:
 info:
   title: WASAText
   description: WASAText; "Programmazione per il Web 2025/26"'s project
-  version: 0.0.1
+  version: 0.1.0
 tags:
   - name: login
     description: login operations
@@ -197,6 +197,52 @@ paths:
                     format: url
                     description: L'URL della foto profilo dopo la rimozione (sarà l'URL di default).
         '401' : { $ref: "#/components/responses/Unauthorized" }
+
+  /media:
+    post:
+      summary: Upload a media file
+      description: |
+        Uploads an image or file to the server.
+        Returns the public URL to be used in the 'POST /messages' endpoint.
+      operationId: uploadMedia
+      tags: ["set", "messages"]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload (max 5MB)
+              required:
+                - file
+      responses:
+        '201':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mediaId:
+                    type: string
+                    description: Unique ID of the uploaded file
+                  url:
+                    type: string
+                    format: url
+                    description: Public URL of the file
+                required:
+                  - mediaId
+                  - url
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          description: Payload Too Large - The uploaded file exceeds the maximum allowed size of 5MB.
+
+
 
   /conversations:
       post:
@@ -611,96 +657,30 @@ paths:
       - name: messageId
         in: path
         required: true
-        schema:
-          type: string
-          pattern: '^[A-Za-z0-9_-]+$'
-          minLength: 1
-          maxLength: 64
+        schema: { $ref: '#/components/schemas/MessageId' }
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                destinationConversationId:
+                  $ref: '#/components/schemas/ConversationId'
+              required:
+                - destinationConversationId
       responses:
         '201':
           description: Message forwarded successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ForwardedMessage"
+                $ref: "#/components/schemas/Message"
         '404':
           $ref: '#/components/responses/NotFoundResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-
-  /conversations/{convId}/messages/{messageId}/comments:
-    post:
-      operationId: commentMessage
-      tags: ["comments"]
-      description: |
-        Adds a comment to a specific message within the specified conversation.
-        The comment is treated as a separate message linked to the original message.
-      summary: the user comments a specific message of the conversation
-      parameters: 
-        - name: convId
-          in: path
-          required: true
-          schema: 
-            $ref: '#/components/schemas/ConversationId'
-        - name: messageId
-          in: path
-          required: true
-          schema:
-            type: string
-            pattern: '^[A-Za-z0-9_-]+$'
-            minLength: 1
-            maxLength: 64
-      responses:
-        '201':
-          description: Message commented successfully
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Comment"
-        '404':
-          $ref: '#/components/responses/NotFoundResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /conversations/{convId}/messages/{messageId}/comments/{commentId}:
-    delete:
-      operationId: uncommentMessage
-      tags: ["delete", "comments"]
-      summary: Delete a specific comment from a message
-      description: Permanently removes the specified comment from the message. The operation corresponds to “uncomment”.
-      parameters:
-        - name: convId
-          in: path
-          required: true
-          schema:
-            $ref: '#/components/schemas/ConversationId'
-        - name: messageId
-          in: path
-          required: true
-          schema:
-            type: string
-            pattern: '^[A-Za-z0-9_-]+$'
-            minLength: 1
-            maxLength: 64
-        - name: commentId
-          in: path
-          required: true
-          schema:
-            type: string
-            pattern: '^[A-Za-z0-9_-]+$'
-            minLength: 1
-            maxLength: 64
-      responses:
-        '200':
-          description: Comment marked as deleted, returns the updated resource
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Comment"
-        '404':
-          $ref: '#/components/responses/NotFoundResponse'
-        '400':
-          $ref: "#/components/responses/BadRequest"
 
   /users:
       get:
@@ -795,6 +775,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Message'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+  /conversations/{convId}/messages/{messageId}/seen:
+    put:
+      summary: Mark message as seen (Blue Ticks)
+      description: |
+        Marks a specific message (and implicitly previous ones) as read by the user.
+        Updates the status to 'seen'.
+      operationId: markAsSeen
+      tags: ["messages"]
+      parameters:
+        - name: convId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ConversationId'
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/MessageId'
+      responses:
+        '200':
+          description: Message marked as seen.
+          content:
+             application/json:
+               schema:
+                 type: object
+                 properties:
+                   success: 
+                     type: boolean
+                     example: true
         '404':
           $ref: '#/components/responses/NotFoundResponse'
 
@@ -919,13 +931,6 @@ components:
       maxLength: 12
       example: 'msg_9aBcDEf23'
 
-    CommentId:
-      type: string
-      description: Unique identifier of the comment
-      pattern: '^cmt_[A-Za-z0-9_-]{3,60}$'
-      minLength: 12
-      maxLength: 12
-      example: 'cmt_123AbC123'
 
 
 
@@ -936,16 +941,11 @@ components:
         status:
           description: status of the message
           type: string
-          enum: [seen, sent, sending, deleted,delivered]
-          pattern: '^(seen|sent|sending|deleted|delivered)$'
+          enum: [seen, sent, deleted, delivered]
+          pattern: '^(seen|sent|deleted|delivered)$'
           minLength: 4
           maxLength: 7
-        text:
-          type: string
-          description: message's text (optional but text or media are required)
-          pattern: '^.+$'
-          minLength: 1
-          maxLength: 150
+          readOnly: true
         media:
           $ref: '#/components/schemas/Media'
         reactions:
@@ -955,6 +955,7 @@ components:
             $ref: '#/components/schemas/Reaction'
           minItems: 0
           maxItems: 100
+          readOnly: true
         time:
           description: time that message was sent 
           type: string
@@ -962,22 +963,34 @@ components:
           pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$'
           minLength: 20
           maxLength: 20
+          readOnly: true
         sender:
           description: ID of the sender
           type: string
           pattern: '^[A-Za-z0-9_-]+$'
           minLength: 1
           maxLength: 64
+          readOnly: true
         messageId:
           type: string
           description: Unique identifier for the message
           pattern: '^[A-Za-z0-9_-]+$'
           minLength: 1
           maxLength: 64
+          readOnly: true
         kind:
           description: Discriminator for the message type
           type: string
-          enum: [normal, comment, forwarded, deleted]
+          enum: [normal, forwarded]
+        replyToId:
+          $ref: '#/components/schemas/MessageId'
+          description: "id of the message being replied to (if this is a reply)"
+        text:
+          type: string
+          description: message's text (optional but text or media are required)
+          pattern: '^.+$'
+          minLength: 1
+          maxLength: 150
 
     Media:
       type: object
@@ -1035,12 +1048,15 @@ components:
           maxItems: 100
 
         lastMessage:
-          $ref: '#/components/schemas/Message'
+          allOf:
+            - $ref: '#/components/schemas/Message'
           description: Preview of the last message sent (for the list view)
+          readOnly: true
         unreadCount:
            type: integer
            description: Number of unread messages (optional UI helper)
            default: 0
+           readOnly: true
       required:
         - convId
         - participants
@@ -1103,37 +1119,5 @@ components:
               description: Group creation date
           required:
             - participants  
-
-    Comment:
-      allOf:
-        - $ref: '#/components/schemas/Message'
-        - type: object
-          properties:
-            kind:
-              type: string
-              enum: [comment]
-              default: comment
-              description: Discriminator indicating that this message is a comment
-              pattern: '^comment$'
-              minLength: 7
-              maxLength: 7
-          required:
-            - kind
-
-    ForwardedMessage:
-      allOf:
-        - $ref: '#/components/schemas/Message'
-        - type: object
-          properties:
-            kind:
-              type: string
-              enum: [forwarded]
-              default: forwarded
-              description: Discriminator indicating that this message is forwarded
-              pattern: '^forwarded$'
-              minLength: 9
-              maxLength: 9
-          required:
-            - kind
     
     
