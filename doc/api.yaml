@@ -550,7 +550,6 @@ paths:
                 status: "deleted"
                 text: "This message has been deleted"
                 sender: "pippo456"
-                kind: "deleted"
         '404':
           $ref: '#/components/responses/NotFoundResponse'
         '400':
