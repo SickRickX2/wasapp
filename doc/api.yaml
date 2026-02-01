@@ -965,24 +965,23 @@ components:
           readOnly: true
         sender:
           description: ID of the sender
-          type: string
-          pattern: '^[A-Za-z0-9_-]+$'
-          minLength: 1
-          maxLength: 64
+          allOf:
+            - $ref: '#/components/schemas/UserId'
           readOnly: true
+
         messageId:
           type: string
           description: Unique identifier for the message
-          pattern: '^[A-Za-z0-9_-]+$'
-          minLength: 1
-          maxLength: 64
+          allOf:
+            - $ref: '#/components/schemas/MessageId'
           readOnly: true
         kind:
           description: Discriminator for the message type
           type: string
           enum: [normal, forwarded]
         replyToId:
-          $ref: '#/components/schemas/MessageId'
+          allOf:
+            - $ref: '#/components/schemas/MessageId'
           description: "id of the message being replied to (if this is a reply)"
         text:
           type: string
@@ -990,6 +989,9 @@ components:
           pattern: '^.+$'
           minLength: 1
           maxLength: 150
+      oneOf:
+        - required: [text]
+        - required: [media]
 
     Media:
       type: object
