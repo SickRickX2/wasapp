@@ -61,16 +61,16 @@ func New(db *sql.DB) (AppDatabase, error) {
 
 	// Check if table exists. If not, the database is empty, and we need to create the structure
 	var tableName string
-	// TABLE USERS
+	// TABLE users
 	err := db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='users';`).Scan(&tableName)
 	if errors.Is(err, sql.ErrNoRows) {
 		// La tabella 'users' non esiste, creala.
 		sqlStmt := `
-            CREATE TABLE "Users" (
-				"userName" TEXT NOT NULL UNIQUE,
-                "identifier" TEXT NOT NULL PRIMARY KEY,
-                "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
-				"PFPURL" TEXT
+            CREATE TABLE "users" (
+				userId TEXT NOT NULL PRIMARY KEY,
+                userName TEXT NOT NULL UNIQUE,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                pfpUrl TEXT
           );
         `
 		_, err = db.Exec(sqlStmt)
@@ -81,22 +81,36 @@ func New(db *sql.DB) (AppDatabase, error) {
 		// Se c'è un errore nella query (es. connessione), fallo risalire
 		return nil, fmt.Errorf("error querying 'users' table existence: %w", err)
 	}
+
+	// TABLE SESSIONS
+	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='sessions';`).Scan(&tableName)
+	if errors.Is(err, sql.ErrNoRows) {
+		sqlStmt := `
+            CREATE TABLE sessions (
+                token TEXT NOT NULL PRIMARY KEY,
+                userId TEXT NOT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                expiresAt DATETIME DEFAULT NULL,
+
+                FOREIGN KEY (userId) REFERENCES users(userId) ON DELETE CASCADE
+            );
+        `
+		_, err = db.Exec(sqlStmt)
+		if err != nil {
+			return nil, fmt.Errorf("error creating 'sessions' table: %w", err)
+		}
+	} else if err != nil {
+		return nil, fmt.Errorf("error querying 'sessions' table existence: %w", err)
+	}
 	// --------------------------------------------------------
 	// TABLE CONVERSATIONS
 	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='conversations';`).Scan(&tableName)
 	if errors.Is(err, sql.ErrNoRows) {
 		sqlStmt := `CREATE TABLE conversations (
-                -- ID: L'identificatore principale.
-                convId VARCHAR(12) NOT NULL PRIMARY KEY,
-                
-                -- CAMPI GRUPPO (Usati solo se kind='group')
+				convId TEXT NOT NULL PRIMARY KEY,
+                kind TEXT NOT NULL DEFAULT 'private', -- private | group
                 groupName TEXT DEFAULT NULL, 
                 groupPhoto TEXT DEFAULT NULL, 
-                
-                -- DISCRIMINATORE: Permette di distinguere tra chat 1-a-1 e gruppi.
-                kind TEXT NOT NULL DEFAULT 'private', 
-                
-                -- Data di creazione automatica
                 createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
             );`
 		_, err = db.Exec(sqlStmt)
@@ -109,25 +123,30 @@ func New(db *sql.DB) (AppDatabase, error) {
 	}
 	// --------------------------------------------------------
 	//TABLE MESSAGES
-	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='Messages';`).Scan(&tableName)
+	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='messages';`).Scan(&tableName)
 	if errors.Is(err, sql.ErrNoRows) {
-		sqlStmt := `CREATE TABLE Messages (
-				messageId VARCHAR(12) NOT NULL PRIMARY KEY,
-				convId VARCHAR(12) NOT NULL,	
-				senderId VARCHAR(12) NOT NULL,
-				content TEXT NOT NULL,
-				sentAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+		sqlStmt := `CREATE TABLE messages (
+				messageId TEXT NOT NULL PRIMARY KEY,
+                convId TEXT NOT NULL,	
+                senderId TEXT NOT NULL,
+                text TEXT DEFAULT NULL,
+                mediaId TEXT DEFAULT NULL,
+                status TEXT NOT NULL DEFAULT 'sent', -- sent|delivered|seen|deleted
+                kind TEXT NOT NULL DEFAULT 'normal', -- normal|forwarded
+                replyToId TEXT DEFAULT NULL,
+                sentAt DATETIME DEFAULT CURRENT_TIMESTAMP,
 
-				FOREIGN KEY (convId) REFERENCES conversations(convId) ON DELETE CASCADE,
-				FOREIGN KEY (senderId) REFERENCES users(userId) ON DELETE CASCADE
+                FOREIGN KEY (convId) REFERENCES conversations(convId) ON DELETE CASCADE,
+                FOREIGN KEY (senderId) REFERENCES users(userId) ON DELETE CASCADE,
+                FOREIGN KEY (replyToId) REFERENCES messages(messageId) ON DELETE SET NULL
 			);`
 		_, err = db.Exec(sqlStmt)
 		if err != nil {
-			return nil, fmt.Errorf("error creating 'Messages' table: %w", err)
+			return nil, fmt.Errorf("error creating 'messages' table: %w", err)
 		}
 	} else if err != nil {
 		// Se c'è un errore nella query (es. connessione), fallo risalire
-		return nil, fmt.Errorf("error querying 'Messages' table existence: %w", err)
+		return nil, fmt.Errorf("error querying 'messages' table existence: %w", err)
 	}
 	// --------------------------------------------------------
 	// TABLE CONVERSATION_PARTICIPANTS
@@ -136,11 +155,10 @@ func New(db *sql.DB) (AppDatabase, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		sqlStmt := `
             CREATE TABLE conversation_participants (
-                convId VARCHAR(12) NOT NULL,
-                userId VARCHAR(12) NOT NULL,
+                convId TEXT NOT NULL,
+                userId TEXT NOT NULL,
                 
                 PRIMARY KEY (convId, userId),
-    
                 FOREIGN KEY (convId) REFERENCES conversations(convId) ON DELETE CASCADE,
                 FOREIGN KEY (userId) REFERENCES users(userId) ON DELETE CASCADE
             );
@@ -153,15 +171,61 @@ func New(db *sql.DB) (AppDatabase, error) {
 		// Se c'è un errore nella query (es. connessione), fallo risalire
 		return nil, fmt.Errorf("error querying 'conversation_participants' table existence: %w", err)
 	}
+
 	// --------------------------------------------------------
-	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='example_table';`).Scan(&tableName)
+	// TABLE MEDIA
+	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='media';`).Scan(&tableName)
 	if errors.Is(err, sql.ErrNoRows) {
-		sqlStmt := `CREATE TABLE example_table (id INTEGER NOT NULL PRIMARY KEY, name TEXT);`
+		sqlStmt := `
+            CREATE TABLE media (
+                mediaId TEXT NOT NULL PRIMARY KEY,
+                url TEXT NOT NULL,
+                filename TEXT DEFAULT NULL,
+                mimeType TEXT NOT NULL,
+                size INTEGER DEFAULT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+        `
 		_, err = db.Exec(sqlStmt)
 		if err != nil {
-			return nil, fmt.Errorf("error creating database structure: %w", err)
+			return nil, fmt.Errorf("error creating 'media' table: %w", err)
 		}
+	} else if err != nil {
+		return nil, fmt.Errorf("error querying 'media' table existence: %w", err)
 	}
+	// --------------------------------------------------------
+	// TABLE REACTIONS
+	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='reactions';`).Scan(&tableName)
+	if errors.Is(err, sql.ErrNoRows) {
+		sqlStmt := `
+            CREATE TABLE reactions (
+                messageId TEXT NOT NULL,
+                userId TEXT NOT NULL,
+                emoji TEXT NOT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+                PRIMARY KEY (messageId, userId),
+                FOREIGN KEY (messageId) REFERENCES messages(messageId) ON DELETE CASCADE,
+                FOREIGN KEY (userId) REFERENCES users(userId) ON DELETE CASCADE
+            );
+        `
+		_, err = db.Exec(sqlStmt)
+		if err != nil {
+			return nil, fmt.Errorf("error creating 'reactions' table: %w", err)
+		}
+	} else if err != nil {
+		return nil, fmt.Errorf("error querying 'reactions' table existence: %w", err)
+	}
+
+	// --------------------------------------------------------
+	//err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='example_table';`).Scan(&tableName)
+	//if errors.Is(err, sql.ErrNoRows) {
+	//sqlStmt := `CREATE TABLE example_table (id INTEGER NOT NULL PRIMARY KEY, name TEXT);`
+	//_, err = db.Exec(sqlStmt)
+	//if err != nil {
+	//return nil, fmt.Errorf("error creating database structure: %w", err)
+	//}
+	//}
 
 	return &appdbimpl{
 		c: db,
