@@ -483,7 +483,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Conversation'
+                oneOf:
+                  - $ref: '#/components/schemas/PrivateConversation'
+                  - $ref: '#/components/schemas/Group'
+                discriminator:
+                  propertyName: type
         '404':
           $ref: '#/components/responses/NotFoundResponse'
   /users/{userId}/conversations:
