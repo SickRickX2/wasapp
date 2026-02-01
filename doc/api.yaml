@@ -270,7 +270,7 @@ paths:
             content:
               application/json:
                 schema:
-                  $ref: '#/components/schemas/Conversation'
+                  $ref: '#/components/schemas/PrivateConversation'
           '404':
             description: Recipient user not found.
             content:
@@ -510,7 +510,9 @@ paths:
                     description: array of all the conversations of the user
                     type: array
                     items:
-                      $ref: "#/components/schemas/Conversation"
+                      oneOf:
+                      - $ref: '#/components/schemas/PrivateConversation'
+                      - $ref: '#/components/schemas/Group'
                     minItems: 0
                     maxItems: 100
         '404':
@@ -1021,11 +1023,11 @@ components:
 
     Conversation: 
       type: object
-      description: Conversation between users, including participants and messages
+      description: Conversation between users, either private or group
       discriminator:
         propertyName: type
         mapping:
-          private: '#/components/schemas/Conversation'
+          private: '#/components/schemas/PrivateConversation'
           group: '#/components/schemas/Group'
       properties:
         convId: 
@@ -1035,15 +1037,6 @@ components:
           enum: [private, group]
           description: Discriminator to distinguish between 1-to-1 and groups
           default: private
-
-        participants:
-          type: array
-          description: List of user IDs that participate in the conversation
-          items: 
-            $ref: '#/components/schemas/UserId'
-          minItems: 1
-          maxItems: 100
-
         lastMessage:
           allOf:
             - $ref: '#/components/schemas/Message'
@@ -1051,12 +1044,11 @@ components:
           readOnly: true
         unreadCount:
            type: integer
-           description: Number of unread messages (optional UI helper)
+           description: Number of unread messages in this conversation
            default: 0
            readOnly: true
       required:
         - convId
-        - participants
         - type
     
     Reaction:
@@ -1117,4 +1109,21 @@ components:
           required:
             - participants  
     
-    
+    PrivateConversation:
+          allOf:
+            - $ref: '#/components/schemas/Conversation'
+            - type: object
+              properties:
+                type:
+                  type: string
+                  enum: [private]
+                  default: private
+                participants:
+                  type: array
+                  description: Exactly two users in a private chat
+                  items:
+                    $ref: '#/components/schemas/UserId'
+                  minItems: 2
+                  maxItems: 2
+              required:
+                - participants
