@@ -511,8 +511,8 @@ paths:
                     type: array
                     items:
                       oneOf:
-                      - $ref: '#/components/schemas/PrivateConversation'
-                      - $ref: '#/components/schemas/Group'
+                        - $ref: '#/components/schemas/PrivateConversation'
+                        - $ref: '#/components/schemas/Group'
                     minItems: 0
                     maxItems: 100
         '404':
