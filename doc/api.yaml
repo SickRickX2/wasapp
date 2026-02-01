@@ -18,8 +18,6 @@ tags:
     description: Operations that let you delete something
   - name: messages
     description: Operations that are related to messages
-  - name: comments
-    description: Operations that are related to comments
   - name: forwardedMessages
     description: Operations related to forwardedMessages
 security:
@@ -522,7 +520,7 @@ paths:
       tags: ["delete", "messages"]
       operationId: deleteMessage
       summary: Mark a message as deleted 
-      description: 
+      description: |
         Instead of physically removing the message, sets its status to "deleted".
         The message remains in the conversation data but is treated as removed by clients.
       parameters:
