@@ -970,7 +970,6 @@ components:
           readOnly: true
 
         messageId:
-          type: string
           description: Unique identifier for the message
           allOf:
             - $ref: '#/components/schemas/MessageId'
