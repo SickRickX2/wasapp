@@ -20,6 +20,10 @@ tags:
     description: Operations that are related to messages
   - name: forwardedMessages
     description: Operations related to forwardedMessages
+  - name: user_management
+    description: Operations related to user management
+  - name: conversations
+    description: Operations related to conversations
 security:
   - BearerAuth: []
 paths:
