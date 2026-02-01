@@ -533,12 +533,9 @@ paths:
         - name: messageId
           in: path
           required: true
-          description: message's id
           schema:
-            type: string
-            pattern: '^[A-Za-z0-9_-]+$'
-            minLength: 1
-            maxLength: 64
+            $ref: '#/components/schemas/MessageId'
+          
       responses:
         '200':
           description: Message marked as deleted, returns the updated resource
