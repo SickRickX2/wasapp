@@ -917,17 +917,17 @@ components:
       type: string
       description: Unique identifier of the conversation
       pattern: '^conv_[A-Za-z0-9_-]{3,60}$'
-      minLength: 12     
-      maxLength: 12
-      example: 'conv_XyZ12345'
+      minLength: 8
+      maxLength: 65
+      example: 'conv_XyZ123'
 
     MessageId:
       type: string
       description: Unique identifier of the message
       pattern: '^msg_[A-Za-z0-9_-]{3,60}$'
-      minLength: 12
-      maxLength: 12
-      example: 'msg_9aBcDEf23'
+      minLength: 7
+      maxLength: 64
+      example: 'msg_9aB'
 
 
 
