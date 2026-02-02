@@ -560,31 +560,7 @@ paths:
           $ref: '#/components/responses/NotFoundResponse'
         '400':
           $ref: "#/components/responses/BadRequest"
-
-#    post: 
-#      operationId: sendMessage
-#      tags: ["messages"]
-#      summary: the user send a message to the conversation
-#      parameters:
-#        - name: convId
-#          in: path
-#          required: true
-#          schema:
-#            type: string
-#      requestBody:
-#        required: true
-#        content:
-          #application/json:
-#            schema:
-#              $ref: "#/components/schemas/Message"
-#      responses:
-#        '201':
-#          description: message sent successfully
-#        '404':
-#          description: conv not found
-#        '400':
-#          $ref: '#/components/responses/BadRequest'
-
+          
   /conversations/{convId}/messages:
     post: 
         operationId: sendMessage
