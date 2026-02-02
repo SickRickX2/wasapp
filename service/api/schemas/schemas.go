@@ -2,75 +2,84 @@ package schemas
 
 import "time"
 
+// Type definitions for IDs
 type UserId string
 type ConversationId string
 type MessageId string
-type CommentedId string
-type Kind string
-type Status string
 
+// Enum constants
 const (
-	MessageKindNormal    Kind = "normal"
-	MessageKindComment   Kind = "comment"
-	MessageKindForwarded Kind = "forwarded"
-	MessageKindDeleted   Kind = "deleted"
+	// Message Kind
+	MsgKindNormal    = "normal"
+	MsgKindForwarded = "forwarded"
 
-	StatusSent      Status = "sent"
-	StatusDelivered Status = "delivered"
-	StatusSeen      Status = "seen"
-	StatusDeleted   Status = "deleted"
-	StatusSending   Status = "sending"
+	// Message Status
+	MsgStatusSent      = "sent"
+	MsgStatusDelivered = "delivered"
+	MsgStatusSeen      = "seen"
+	MsgStatusDeleted   = "deleted"
+
+	// Conversation Type
+	ConvTypePrivate = "private"
+	ConvTypeGroup   = "group"
 )
 
+// schemas/User
 type User struct {
-	UserId    UserId    `json:"userId"`
-	UserName  string    `json:"userName"`
-	PFPURL    *string   `json:"pfp,omitempty"`
+	ID        UserId    `json:"userId"`
+	Name      string    `json:"userName"`
+	PFPURL    string    `json:"pfp,omitempty"` // Profile Picture URL
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-type Message struct {
-	MessageId MessageId `json:"messageId"`
-	Sender    UserId    `json:"sender"`
-	Status    Status    `json:"status"`
-	Kind      Kind      `json:"kind"`
-	Time      time.Time `json:"time"`
-	Text      *string   `json:"text,omitempty"`
-	Media     *Media    `json:"media,omitempty"`
-}
-
-type Comment struct {
-	Message
-}
-
-// ForwardedMessage implementa lo schema ForwardedMessage (usa allOf: [Message])
-// Embedding per ereditare tutti i campi di Message.
-type ForwardedMessage struct {
-	Message
-}
-
+// /schemas/Media
 type Media struct {
 	URL      string `json:"url"`
+	Filename string `json:"filename,omitempty"`
 	MimeType string `json:"mimeType"`
-	Size     int    `json:"size"`
-	Filename string `json:"filename"`
+	Size     int    `json:"size,omitempty"`
 }
 
-type NotFound struct {
-	Message string `json:"message"`
+// /schemas/Reaction
+type Reaction struct {
+	UserId UserId `json:"userId"`
+	Emoji  string `json:"emoji"`
 }
 
-type Conversation struct {
-	ID             ConversationId `json:"convId"`
-	ParticipantIDs []UserId       `json:"participants"`
-	LastMessage    *Message       `json:"lastMessage,omitempty"`
-	Messages       []Message      `json:"messages,omitempty"`
-	Kind           string
+// /schemas/Message
+type Message struct {
+	ID        MessageId  `json:"messageId"`
+	Sender    UserId     `json:"sender"`
+	Status    string     `json:"status"`
+	Kind      string     `json:"kind"`
+	Time      time.Time  `json:"time"`
+	Text      string     `json:"text,omitempty"`
+	Media     *Media     `json:"media,omitempty"`
+	Reactions []Reaction `json:"reactions"`
+	ReplyToId *MessageId `json:"replyToId,omitempty"`
 }
+
+// /schemas/Conversation
+
+type PrivateConversation struct {
+	ConvId       ConversationId `json:"convId"`
+	Type         string         `json:"type"`
+	LastMessage  *Message       `json:"lastMessage,omitempty"`
+	UnreadCount  int            `json:"unreadCount"`
+	Participants []UserId       `json:"participants"`
+}
+
 type Group struct {
-	Conversation
-	Name  string  `json:"groupName"`
-	Photo *string `json:"groupPhoto,omitempty"`
+	ConvId       ConversationId `json:"convId"`
+	Type         string         `json:"type"`
+	LastMessage  *Message       `json:"lastMessage,omitempty"`
+	UnreadCount  int            `json:"unreadCount"`
+	Participants []UserId       `json:"participants"`
+	GroupName    string         `json:"groupName"`
+	GroupPhoto   string         `json:"groupPhoto,omitempty"`
+	CreatedAt    time.Time      `json:"createdAt"`
+}
 
-	CreatedAt time.Time `json:"createdAt"`
+type GenericResponse struct {
+	Message string `json:"message"`
 }
