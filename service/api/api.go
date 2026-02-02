@@ -88,10 +88,8 @@ func New(cfg Config) (Router, error) {
 
 type _router struct {
 	router *mux.Router
-
 	// baseLogger is a logger for non-requests contexts, like goroutines or background tasks not started by a request.
 	// Use context logger if available (e.g., in requests) instead of this logger.
 	baseLogger logrus.FieldLogger
-
-	db database.AppDatabase
+	db         database.AppDatabase
 }

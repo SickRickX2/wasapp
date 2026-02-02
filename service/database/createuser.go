@@ -1,20 +1,15 @@
 package database
 
 import (
-	"fmt"
+	"github.com/SickRickX2/wasapp/service/api/schemas"
 )
 
-func (db *appdbimpl) CreateUser(identifier string, name string) error {
-	_, err := db.c.Exec("INSERT INTO Users (userId, userName) VALUES (?, ?)", identifier, name)
-	if err != nil {
-		// Controlla se l'errore è una violazione di chiave primaria (duplicate key)
-		if sqliteErr, ok := err.(interface{ ErrorCode() int }); ok {
-			const sqliteConstraintPrimaryKey = 1555 // Codice errore SQLite per violazione di chiave primaria
-			if sqliteErr.ErrorCode() == sqliteConstraintPrimaryKey {
-				return ErrDuplicateKey
-			}
-		}
-		return fmt.Errorf("error inserting new user: %w", err)
-	}
-	return nil
+func (db *appdbimpl) CreateUser(u schemas.User) error {
+	const query = `
+		INSERT INTO users (userId, userName, createdAt, pfpUrl) 
+		VALUES (?, ?, ?, ?)
+	`
+	// campi della struct User
+	_, err := db.c.Exec(query, u.ID, u.Name, u.CreatedAt, u.PFPURL)
+	return err
 }

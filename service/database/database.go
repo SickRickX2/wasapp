@@ -35,15 +35,19 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/SickRickX2/wasapp/service/api/schemas"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
 // AppDatabase is the high level interface for the DB
 type AppDatabase interface {
-	GetName() (string, error)
-	SetName(name string) error
-	FindUserByName(name string) (string, error)
-	CreateUser(identifier string, name string) error
+	// Login operatiobs
+	CreateUser(u schemas.User) error
+	FindUserByName(name string) (schemas.User, error)
+
+	GetUserById(id schemas.UserId) (schemas.User, error)
+	SetUserName(id schemas.UserId, newName string) error
 
 	Ping() error
 }
@@ -217,21 +221,20 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error querying 'reactions' table existence: %w", err)
 	}
 
-	// --------------------------------------------------------
-	//err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='example_table';`).Scan(&tableName)
-	//if errors.Is(err, sql.ErrNoRows) {
-	//sqlStmt := `CREATE TABLE example_table (id INTEGER NOT NULL PRIMARY KEY, name TEXT);`
-	//_, err = db.Exec(sqlStmt)
-	//if err != nil {
-	//return nil, fmt.Errorf("error creating database structure: %w", err)
-	//}
-	//}
-
 	return &appdbimpl{
 		c: db,
 	}, nil
 }
 
+// --------------------------------------------------------
+// err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='example_table';`).Scan(&tableName)
+// if errors.Is(err, sql.ErrNoRows) {
+// sqlStmt := `CREATE TABLE example_table (id INTEGER NOT NULL PRIMARY KEY, name TEXT);`
+// _, err = db.Exec(sqlStmt)
+// if err != nil {
+// return nil, fmt.Errorf("error creating database structure: %w", err)
+// }
+// }
 func (db *appdbimpl) Ping() error {
 	return db.c.Ping()
 }

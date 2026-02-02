@@ -1,7 +1,9 @@
 package database
 
-// SetName is an example that shows you how to execute insert/update
-func (db *appdbimpl) SetName(name string) error {
-	_, err := db.c.Exec("INSERT INTO example_table (id, name) VALUES (1, ?)", name)
+import "github.com/SickRickX2/wasapp/service/api/schemas"
+
+func (db *appdbimpl) SetUserName(id schemas.UserId, newName string) error {
+	const query = `UPDATE users SET userName = ? WHERE userId = ?`
+	_, err := db.c.Exec(query, newName, id)
 	return err
 }
