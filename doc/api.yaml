@@ -1028,6 +1028,8 @@ components:
            type: integer
            description: Number of unread messages in this conversation
            default: 0
+           minimum: 0
+           maximum: 99
            readOnly: true
       required:
         - convId
