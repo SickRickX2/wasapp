@@ -51,6 +51,7 @@ type AppDatabase interface {
 	CreateConversation(userA schemas.UserId, userB schemas.UserId) (schemas.PrivateConversation, error)
 	CreateMessage(convId schemas.ConversationId, msg schemas.Message) error
 	GetConversationMessages(convId schemas.ConversationId, limit int, beforeId string) ([]schemas.Message, error)
+	DeleteMessage(convId schemas.ConversationId, messageId schemas.MessageId, userId schemas.UserId) (schemas.Message, error)
 	Ping() error
 }
 
