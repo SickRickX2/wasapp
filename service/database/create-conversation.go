@@ -28,7 +28,7 @@ func (db *appdbimpl) CreateConversation(userA schemas.UserId, userB schemas.User
 
 	err := db.c.QueryRow(checkQuery, userA, userB).Scan(&conv.ConvId, &createdAt)
 	if err == nil {
-		// Trovata! Restituisci quella esistente
+		// Tsela chat esiste già, ritorna i dati
 		conv.Type = "private"
 		conv.Participants = []schemas.UserId{userA, userB}
 		return conv, nil
@@ -36,7 +36,7 @@ func (db *appdbimpl) CreateConversation(userA schemas.UserId, userB schemas.User
 		return conv, err
 	}
 
-	// 2. Se non esiste, creala
+	// se nonla trova tocca crearla
 	newConvID := generateConvId()
 	now := time.Now()
 
@@ -46,13 +46,13 @@ func (db *appdbimpl) CreateConversation(userA schemas.UserId, userB schemas.User
 	}
 	defer tx.Rollback()
 
-	// A. Insert Conversation
+	// crea la conversazione
 	_, err = tx.Exec(`INSERT INTO conversations (convId, kind, createdAt) VALUES (?, 'private', ?)`, newConvID, now)
 	if err != nil {
 		return conv, err
 	}
 
-	// B. Insert Participants
+	// mette i partecipanti
 	_, err = tx.Exec(`INSERT INTO conversation_participants (convId, userId) VALUES (?, ?)`, newConvID, userA)
 	if err != nil {
 		return conv, err
@@ -66,12 +66,10 @@ func (db *appdbimpl) CreateConversation(userA schemas.UserId, userB schemas.User
 		return conv, err
 	}
 
-	// 3. Costruisci l'oggetto (SENZA CreatedAt)
 	conv = schemas.PrivateConversation{
 		ConvId:       newConvID,
 		Type:         "private",
 		Participants: []schemas.UserId{userA, userB},
-		// CreatedAt: now, <--- RIMOSSO perché non esiste nello schema API
 	}
 
 	return conv, nil

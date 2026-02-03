@@ -17,13 +17,11 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request) {
 		Name string `json:"name"`
 	}
 
-	// 1. Decodifica JSON
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 		return
 	}
 
-	// 2. Validazione
 	if len(req.Name) < 3 || len(req.Name) > 16 {
 		http.Error(w, "Username must be between 3 and 16 chars", http.StatusBadRequest)
 		return
@@ -31,19 +29,18 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request) {
 
 	var identifier schemas.UserId
 
-	// 3. Cerca se l'utente esiste già
+	//  cerca se esiste
 	user, err := rt.db.FindUserByName(req.Name)
 	if err == nil {
-		// Trovato!
+
 		identifier = user.ID
 	} else {
-		// Non trovato (o errore). Assumiamo che se c'è errore, l'utente non c'è.
-		// Iniziamo il ciclo di creazione con retry (per evitare ID duplicati)
+		// se non esiste, lo crea
 		const maxRetries = 3
 		var creationSuccess bool
 
 		for i := 0; i < maxRetries; i++ {
-			// Genera un ID casuale tipo 'usr_XyZ123'
+			// genera un suo id
 			newID := generateUserId()
 
 			newUser := schemas.User{
@@ -52,28 +49,26 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request) {
 				CreatedAt: time.Now(),
 			}
 
-			// Prova a inserire nel DB
+			//inserisce nel db
 			err = rt.db.CreateUser(newUser)
 			if err == nil {
-				// Successo!
+
 				identifier = newID
 				creationSuccess = true
 				break
 			}
 
-			// Se fallisce, probabilmente l'ID esiste già (molto raro con 8 char, ma possibile).
-			// Il ciclo continua e ne prova un altro.
 		}
 
 		if !creationSuccess {
-			// Se dopo 3 tentativi fallisce ancora, è un problema serio del DB
+			// se dopo i tentativi non riesce allora errore
 			rt.baseLogger.WithError(err).Error("Failed to create user after retries")
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 	}
 
-	// 4. Rispondi con successo (201 Created)
+	// risponde con l'id
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(struct {

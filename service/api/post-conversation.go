@@ -9,13 +9,13 @@ import (
 )
 
 func (rt *_router) createConversation(w http.ResponseWriter, r *http.Request) {
-	// 1. Estrai l'utente dall'Header Authorization
+	// prende l'utente
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		http.Error(w, "Unauthorized: missing header", http.StatusUnauthorized)
 		return
 	}
-	// L'header è tipo "Bearer usr_123". Splittiamo per prendere solo l'ID.
+	// parsa il token
 	parts := strings.Split(authHeader, " ")
 	if len(parts) != 2 || parts[0] != "Bearer" {
 		http.Error(w, "Unauthorized: invalid token format", http.StatusUnauthorized)
@@ -23,7 +23,7 @@ func (rt *_router) createConversation(w http.ResponseWriter, r *http.Request) {
 	}
 	myUserId := schemas.UserId(parts[1])
 
-	// 2. Leggi il Body (chi è il destinatario?)
+	// cerca il destinatario nel body
 	var req struct {
 		RecipientId schemas.UserId `json:"recipientId"`
 	}
@@ -32,28 +32,27 @@ func (rt *_router) createConversation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Validazione base
+	// validazioni
 	if req.RecipientId == "" {
 		http.Error(w, "RecipientId is required", http.StatusBadRequest)
 		return
 	}
-	// Non puoi parlare da solo (opzionale, ma ha senso)
+	// non puoi parlare da solo in una conversazione privata
 	if req.RecipientId == myUserId {
 		http.Error(w, "You cannot chat with yourself", http.StatusBadRequest)
 		return
 	}
 
-	// 4. Chiama il DB
+	// crea se none siste
 	conversation, err := rt.db.CreateConversation(myUserId, req.RecipientId)
 	if err != nil {
-		// Se l'errore è grave logghiamo, altrimenti gestiamo i casi (es. utente B non esiste)
+		// problemi con il database
 		rt.baseLogger.WithError(err).Error("Error creating conversation")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// 5. Rispondi con la conversazione (200 OK se esiste, 201 se creata...
-	// la specifica dice 200 per entrambe nel caso idempotente, va bene 200)
+	// risponde con la conversazione
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(conversation)
 }

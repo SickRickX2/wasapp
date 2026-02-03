@@ -14,7 +14,7 @@ func (db *appdbimpl) FindUserByName(name string) (schemas.User, error) {
 		FROM users 
 		WHERE userName = ?
 	`
-	// NOTA: Scan su &u.ID e &u.Name
+	// riga singola
 	err := db.c.QueryRow(query, name).Scan(&u.ID, &u.Name, &u.CreatedAt, &u.PFPURL)
 
 	if errors.Is(err, sql.ErrNoRows) {

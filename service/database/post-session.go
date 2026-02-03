@@ -9,7 +9,6 @@ func (db *appdbimpl) PostSession(identifier string) error {
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		// Se la lettura delle righe affette fallisce, restituisci l'errore.
 		return err
 	}
 	if rowsAffected == 0 {
