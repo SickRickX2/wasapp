@@ -50,7 +50,7 @@ type AppDatabase interface {
 	SearchUsers(query string) ([]schemas.User, error)
 	CreateConversation(userA schemas.UserId, userB schemas.UserId) (schemas.PrivateConversation, error)
 	CreateMessage(convId schemas.ConversationId, msg schemas.Message) error
-
+	GetConversationMessages(convId schemas.ConversationId, limit int, beforeId string) ([]schemas.Message, error)
 	Ping() error
 }
 

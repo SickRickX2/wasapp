@@ -18,5 +18,6 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.HandleFunc("/users", rt.searchUsers).Methods("GET")
 	rt.router.HandleFunc("/conversations", rt.createConversation).Methods("POST")
 	rt.router.HandleFunc("/conversations/{convId}/messages", rt.sendMessage).Methods("POST")
+	rt.router.HandleFunc("/conversations/{convId}/messages", rt.getMessages).Methods("GET")
 	return rt.router
 }

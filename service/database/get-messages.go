@@ -1,0 +1,52 @@
+package database
+
+import (
+	"github.com/SickRickX2/wasapp/service/api/schemas"
+)
+
+func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limit int, beforeId string) ([]schemas.Message, error) {
+	var messages []schemas.Message
+
+	// Query base: prendiamo i messaggi di questa conversazione
+	query := `SELECT messageId, senderId, text, sentAt, kind, status FROM messages WHERE convId = ?`
+	args := []interface{}{convId}
+
+	// Se c'è beforeId, dobbiamo prendere i messaggi inviati PRIMA di quel messaggio specifico
+	if beforeId != "" {
+		// Sottoquery per trovare la data del messaggio cursore
+		query += ` AND sentAt < (SELECT sentAt FROM messages WHERE messageId = ?)`
+		args = append(args, beforeId)
+	}
+
+	// Ordiniamo dal più recente al più vecchio e applichiamo il limite
+	query += ` ORDER BY sentAt DESC LIMIT ?`
+	args = append(args, limit)
+
+	rows, err := db.c.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var m schemas.Message
+		// Nota: PFP e Media per ora li ignoriamo o li lasciamo null
+		if err := rows.Scan(&m.ID, &m.Sender, &m.Text, &m.Time, &m.Kind, &m.Status); err != nil {
+			return nil, err
+		}
+		// Inizializza slice vuote per evitare null nel JSON
+		m.Reactions = []schemas.Reaction{}
+		messages = append(messages, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Se slice vuota, ritorna [] invece di null
+	if messages == nil {
+		messages = make([]schemas.Message, 0)
+	}
+
+	return messages, nil
+}
