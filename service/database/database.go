@@ -48,6 +48,7 @@ type AppDatabase interface {
 	GetUserById(id schemas.UserId) (schemas.User, error)
 	SetUserName(id schemas.UserId, newName string) error
 	SearchUsers(query string) ([]schemas.User, error)
+	CreateConversation(userA schemas.UserId, userB schemas.UserId) (schemas.PrivateConversation, error)
 
 	Ping() error
 }
