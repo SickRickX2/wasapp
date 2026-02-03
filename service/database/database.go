@@ -45,9 +45,9 @@ type AppDatabase interface {
 	// Login operatiobs
 	CreateUser(u schemas.User) error
 	FindUserByName(name string) (schemas.User, error)
-
 	GetUserById(id schemas.UserId) (schemas.User, error)
 	SetUserName(id schemas.UserId, newName string) error
+	SearchUsers(query string) ([]schemas.User, error)
 
 	Ping() error
 }

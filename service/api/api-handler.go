@@ -15,6 +15,6 @@ func (rt *_router) Handler() http.Handler {
 	//rt.router.HandleFunc("/users/{userId}/username", rt.setUsername).Methods("PUT")
 	rt.router.HandleFunc("/liveness", rt.liveness).Methods("GET")
 	rt.router.HandleFunc("/users/{userId}/username", rt.setUsername).Methods("PUT")
+	rt.router.HandleFunc("/users", rt.searchUsers).Methods("GET")
 	return rt.router
-
 }
