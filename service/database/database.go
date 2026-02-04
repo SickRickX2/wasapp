@@ -55,6 +55,7 @@ type AppDatabase interface {
 	CreateGroup(creator schemas.UserId, name string, participants []schemas.UserId) (schemas.Group, error)
 	AddGroupMember(convId schemas.ConversationId, userId schemas.UserId) error
 	RemoveGroupMember(convId schemas.ConversationId, userId schemas.UserId) error
+	GetConversations(userId schemas.UserId) ([]schemas.Conversation, error)
 
 	Ping() error
 }
