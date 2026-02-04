@@ -54,6 +54,7 @@ type AppDatabase interface {
 	DeleteMessage(convId schemas.ConversationId, messageId schemas.MessageId, userId schemas.UserId) (schemas.Message, error)
 	CreateGroup(creator schemas.UserId, name string, participants []schemas.UserId) (schemas.Group, error)
 	AddGroupMember(convId schemas.ConversationId, userId schemas.UserId) error
+	RemoveGroupMember(convId schemas.ConversationId, userId schemas.UserId) error
 
 	Ping() error
 }
