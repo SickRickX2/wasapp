@@ -24,5 +24,7 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.HandleFunc("/conversations/{convId}/participants/{userId}", rt.addToGroup).Methods("PUT")
 	rt.router.HandleFunc("/conversations/{convId}/participants/{userId}", rt.removeFromGroup).Methods("DELETE")
 	rt.router.HandleFunc("/conversations", rt.getConversations).Methods("GET")
+	rt.router.HandleFunc("/media", rt.uploadMedia).Methods("POST")
+	rt.router.PathPrefix("/images/").Handler(http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
 	return rt.router
 }

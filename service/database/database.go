@@ -56,6 +56,7 @@ type AppDatabase interface {
 	AddGroupMember(convId schemas.ConversationId, userId schemas.UserId) error
 	RemoveGroupMember(convId schemas.ConversationId, userId schemas.UserId) error
 	GetConversations(userId schemas.UserId) ([]schemas.Conversation, error)
+	SaveMedia(media schemas.Media, mediaId string) error
 
 	Ping() error
 }
