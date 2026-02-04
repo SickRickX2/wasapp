@@ -12,7 +12,7 @@ import (
 )
 
 func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request) {
-	// 1. Autenticazione (Chi manda il messaggio?)
+	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -25,48 +25,50 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	senderId := schemas.UserId(parts[1])
 
-	// 2. Parametri Path (In quale conversazione?)
+	// prende la conversazione
 	vars := mux.Vars(r)
 	convId := schemas.ConversationId(vars["convId"])
 
-	// 3. Parsing Body (Cosa c'è scritto?)
-	var req schemas.Message
+	// prende ilmessaggio dal body
+	var req struct {
+		Text    string `json:"text"`
+		MediaId string `json:"mediaId"` // Campo opzionale
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Validazione: deve esserci almeno il testo (per ora ignoriamo i media)
-	if req.Text == "" {
-		http.Error(w, "Text is required", http.StatusBadRequest)
+	// deve esserci almeno uno tra testo o media TODO: media non implementato
+	if req.Text == "" && req.MediaId == "" {
+		http.Error(w, "Message must contain either text or media", http.StatusBadRequest)
 		return
 	}
 
-	// 4. Costruzione Messaggio Completo
-	// Generiamo ID e Timestamp qui
+	// creazione del messaggio
 	newMessage := schemas.Message{
-		ID:     generateMessageId(),
-		Sender: senderId,
-		Text:   req.Text,
-		Time:   time.Now(),
-		Status: "sent",
-		Kind:   "normal",
+		ID:      generateMessageId(),
+		Sender:  senderId,
+		Text:    req.Text,
+		MediaId: req.MediaId,
+		Time:    time.Now(),
+		Status:  "sent",
+		Kind:    "normal",
 	}
 
-	// 5. Salvataggio nel DB
+	// salva nel db
 	err := rt.db.CreateMessage(convId, newMessage)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error sending message")
-		// Se l'errore è "user not authorized...", potremmo dare 403, ma per ora 500 o 400
 		http.Error(w, "Error sending message (are you a participant?)", http.StatusBadRequest)
 		return
 	}
 
-	// 6. Risposta 204 No Content (Come da specifica)
+	// risposta di successo
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Generatore ID casareccio per messaggi
+// genera un id casuale per il messaggio
 func generateMessageId() schemas.MessageId {
 	const charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
 	const length = 10

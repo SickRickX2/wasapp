@@ -9,10 +9,7 @@ import (
 func (db *appdbimpl) DeleteMessage(convId schemas.ConversationId, messageId schemas.MessageId, userId schemas.UserId) (schemas.Message, error) {
 	var msg schemas.Message
 
-	// 1. Esegui l'aggiornamento (UPDATE)
-	// - Imposta status a 'deleted'
-	// - Sovrascrive il testo
-	// - Rimuove il media (mediaId = NULL)
+	//  trasforma il messaggio in uno cancellato
 	const updateQuery = `
 		UPDATE messages 
 		SET status = 'deleted', 
@@ -25,7 +22,7 @@ func (db *appdbimpl) DeleteMessage(convId schemas.ConversationId, messageId sche
 		return msg, err
 	}
 
-	// Controlliamo se abbiamo davvero modificato qualcosa
+	// controlla modifiche
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
 		return msg, err
@@ -34,8 +31,7 @@ func (db *appdbimpl) DeleteMessage(convId schemas.ConversationId, messageId sche
 		return msg, errors.New("message not found or user not authorized")
 	}
 
-	// 2. Recupera il messaggio aggiornato per restituirlo
-	// Nota: mediaId sarà NULL quindi media sarà nil
+	// recupera il messaggio aggiornato
 	const selectQuery = `
 		SELECT messageId, senderId, text, sentAt, kind, status 
 		FROM messages 

@@ -10,16 +10,20 @@ import (
 )
 
 func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request) {
-	// 1. Prendi convId dal path
+	// prende i parametri dall'url
 	vars := mux.Vars(r)
 	convId := schemas.ConversationId(vars["convId"])
 
-	// 2. Autenticazione: Controlla se l'utente fa parte della chat?
-	// (Per brevità saltiamo il check qui, ma idealmente dovresti controllare
-	// se il richiedente è in conversation_participants, come fatto per CreateMessage)
+	// autenticazione
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	// 3. Gestione Parametri Query (limit, beforeId)
-	limit := 20 // Default
+	// prende i parametri
+	limit := 20
+	// default
 	if l := r.URL.Query().Get("limit"); l != "" {
 		parsedLimit, err := strconv.Atoi(l)
 		if err == nil && parsedLimit > 0 && parsedLimit <= 100 {
@@ -28,7 +32,7 @@ func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	beforeId := r.URL.Query().Get("beforeId")
 
-	// 4. Chiama DB
+	// chiama il db
 	msgs, err := rt.db.GetConversationMessages(convId, limit, beforeId)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error retrieving messages")
@@ -36,7 +40,7 @@ func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5. Rispondi JSON
+	// risposta con i messaggi
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(msgs)
 }

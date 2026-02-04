@@ -1,30 +1,39 @@
 package database
 
 import (
+	"database/sql"
 	"errors"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 )
 
 func (db *appdbimpl) CreateMessage(convId schemas.ConversationId, msg schemas.Message) error {
-	// 1. Controllo: Il mittente è un partecipante?
+	// controllo se l'utente fa parte della conversazione
 	const checkQuery = `SELECT 1 FROM conversation_participants WHERE convId = ? AND userId = ?`
 	var found int
 	err := db.c.QueryRow(checkQuery, convId, msg.Sender).Scan(&found)
 	if err != nil {
 		return errors.New("user not authorized to send message in this conversation")
 	}
+	var mediaId sql.NullString
+	if msg.MediaId != "" {
+		mediaId.String = msg.MediaId
+		mediaId.Valid = true
+	} else {
+		mediaId.Valid = false // Questo diventerà NULL nel DB
+	}
 
-	// 2. Inserimento
+	// inserisco il messaggio
 	const sqlQuery = `
-		INSERT INTO messages (messageId, convId, senderId, text, sentAt, kind, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO messages (messageId, convId, senderId, text, mediaId, sentAt, kind, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err = db.c.Exec(sqlQuery,
 		msg.ID,
 		convId,
 		msg.Sender,
 		msg.Text,
+		mediaId,
 		msg.Time,
 		"normal", // kind
 		"sent",   // status

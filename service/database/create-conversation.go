@@ -12,10 +12,9 @@ import (
 func (db *appdbimpl) CreateConversation(userA schemas.UserId, userB schemas.UserId) (schemas.PrivateConversation, error) {
 	var conv schemas.PrivateConversation
 
-	// Variabile di supporto per leggere la data dal DB (anche se non la usiamo nel JSON finale)
 	var createdAt time.Time
 
-	// 1. Controlla se esiste già una chat PRIVATA tra questi due utenti
+	// controlla se esiste già una chat privata tra questi due
 	const checkQuery = `
 		SELECT c.convId, c.createdAt 
 		FROM conversations c
@@ -28,7 +27,7 @@ func (db *appdbimpl) CreateConversation(userA schemas.UserId, userB schemas.User
 
 	err := db.c.QueryRow(checkQuery, userA, userB).Scan(&conv.ConvId, &createdAt)
 	if err == nil {
-		// Tsela chat esiste già, ritorna i dati
+		// se la trova la restituisce
 		conv.Type = "private"
 		conv.Participants = []schemas.UserId{userA, userB}
 		return conv, nil

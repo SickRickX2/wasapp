@@ -10,7 +10,7 @@ import (
 )
 
 func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request) {
-	// 1. Autenticazione (Chi vuole cancellare?)
+	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -23,21 +23,21 @@ func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	userId := schemas.UserId(parts[1])
 
-	// 2. Parametri Path
+	// prende i parametri dall'url
 	vars := mux.Vars(r)
 	convId := schemas.ConversationId(vars["convId"])
 	messageId := schemas.MessageId(vars["messageId"])
 
-	// 3. Chiama DB
+	// cancella dal db
 	updatedMsg, err := rt.db.DeleteMessage(convId, messageId, userId)
 	if err != nil {
-		// Se non l'ha trovato o non è autorizzato, restituiamo 404 (per sicurezza non distinguiamo troppo)
+		// se non l'ha trovato o non è autorizzato  restituisce 404
 		rt.baseLogger.WithError(err).Error("Error deleting message")
 		http.Error(w, "Message not found or unauthorized", http.StatusNotFound)
 		return
 	}
 
-	// 4. Risposta (Il messaggio aggiornato con status='deleted')
+	// tocca aggiornare la risposta
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedMsg)
 }

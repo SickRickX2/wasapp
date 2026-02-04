@@ -54,6 +54,7 @@ type Message struct {
 	Kind      string     `json:"kind"`
 	Time      time.Time  `json:"time"`
 	Text      string     `json:"text,omitempty"`
+	MediaId   string     `json:"mediaId,omitempty"`
 	Media     *Media     `json:"media,omitempty"`
 	Reactions []Reaction `json:"reactions"`
 	ReplyToId *MessageId `json:"replyToId,omitempty"`

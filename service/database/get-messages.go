@@ -7,18 +7,17 @@ import (
 func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limit int, beforeId string) ([]schemas.Message, error) {
 	var messages []schemas.Message
 
-	// Query base: prendiamo i messaggi di questa conversazione
+	// prendiamo la conversazione
 	query := `SELECT messageId, senderId, text, sentAt, kind, status FROM messages WHERE convId = ?`
 	args := []interface{}{convId}
 
-	// Se c'è beforeId, dobbiamo prendere i messaggi inviati PRIMA di quel messaggio specifico
+	// prendiamo i messaggi prima di beforeid
 	if beforeId != "" {
-		// Sottoquery per trovare la data del messaggio cursore
 		query += ` AND sentAt < (SELECT sentAt FROM messages WHERE messageId = ?)`
 		args = append(args, beforeId)
 	}
 
-	// Ordiniamo dal più recente al più vecchio e applichiamo il limite
+	// ordiniamo
 	query += ` ORDER BY sentAt DESC LIMIT ?`
 	args = append(args, limit)
 
@@ -30,11 +29,11 @@ func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limi
 
 	for rows.Next() {
 		var m schemas.Message
-		// Nota: PFP e Media per ora li ignoriamo o li lasciamo null
+		// ingnora i media
 		if err := rows.Scan(&m.ID, &m.Sender, &m.Text, &m.Time, &m.Kind, &m.Status); err != nil {
 			return nil, err
 		}
-		// Inizializza slice vuote per evitare null nel JSON
+		// mette le reazioni vuote
 		m.Reactions = []schemas.Reaction{}
 		messages = append(messages, m)
 	}
@@ -43,7 +42,7 @@ func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limi
 		return nil, err
 	}
 
-	// Se slice vuota, ritorna [] invece di null
+	// non deve restituire nil
 	if messages == nil {
 		messages = make([]schemas.Message, 0)
 	}
