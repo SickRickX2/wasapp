@@ -21,6 +21,7 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.HandleFunc("/conversations/{convId}/messages", rt.getMessages).Methods("GET")
 	rt.router.HandleFunc("/conversations/{convId}/messages/{messageId}", rt.deleteMessage).Methods("DELETE")
 	rt.router.HandleFunc("/groups", rt.createGroup).Methods("POST")
+	rt.router.HandleFunc("/conversations/{convId}/participants/{userId}", rt.addToGroup).Methods("PUT")
 
 	return rt.router
 }
