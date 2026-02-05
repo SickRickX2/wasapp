@@ -26,5 +26,6 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.HandleFunc("/conversations", rt.getConversations).Methods("GET")
 	rt.router.HandleFunc("/media", rt.uploadMedia).Methods("POST")
 	rt.router.PathPrefix("/images/").Handler(http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
+	rt.router.HandleFunc("/users/{userId}/photo", rt.setUserPhoto).Methods("PUT")
 	return rt.router
 }

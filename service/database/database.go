@@ -57,6 +57,7 @@ type AppDatabase interface {
 	RemoveGroupMember(convId schemas.ConversationId, userId schemas.UserId) error
 	GetConversations(userId schemas.UserId) ([]schemas.Conversation, error)
 	SaveMedia(media schemas.Media, mediaId string) error
+	SetUserPhoto(userId schemas.UserId, photoUrl string) error
 
 	Ping() error
 }
