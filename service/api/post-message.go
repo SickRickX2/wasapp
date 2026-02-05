@@ -29,17 +29,20 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	convId := schemas.ConversationId(vars["convId"])
 
-	// prende ilmessaggio dal body
+	// prende il messaggio dal body
+	// MODIFICA QUI: Aggiungiamo ReplyToId alla struct di ricezione
 	var req struct {
-		Text    string `json:"text"`
-		MediaId string `json:"mediaId"` // Campo opzionale
+		Text      string             `json:"text"`
+		MediaId   string             `json:"mediaId"`
+		ReplyToId *schemas.MessageId `json:"replyToId"` // <--- ECCO IL PEZZO MANCANTE!
 	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// deve esserci almeno uno tra testo o media TODO: media non implementato
+	// deve esserci almeno uno tra testo o media
 	if req.Text == "" && req.MediaId == "" {
 		http.Error(w, "Message must contain either text or media", http.StatusBadRequest)
 		return
@@ -47,19 +50,21 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request) {
 
 	// creazione del messaggio
 	newMessage := schemas.Message{
-		ID:      generateMessageId(),
-		Sender:  senderId,
-		Text:    req.Text,
-		MediaId: req.MediaId,
-		Time:    time.Now(),
-		Status:  "sent",
-		Kind:    "normal",
+		ID:        generateMessageId(),
+		Sender:    senderId,
+		Text:      req.Text,
+		MediaId:   req.MediaId,
+		ReplyToId: req.ReplyToId, // <--- E LO ASSEGNIAMO QUI
+		Time:      time.Now(),
+		Status:    "sent",
+		Kind:      "normal", // Il DB lo cambierà in "comment" se vede il replyToId
 	}
 
 	// salva nel db
 	err := rt.db.CreateMessage(convId, newMessage)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error sending message")
+		// Nota: StatusBadRequest potrebbe non essere l'ideale per errori interni, ma ok per ora
 		http.Error(w, "Error sending message (are you a participant?)", http.StatusBadRequest)
 		return
 	}
