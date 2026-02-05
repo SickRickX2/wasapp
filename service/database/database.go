@@ -216,7 +216,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 	}
 	// --------------------------------------------------------
 	// TABLE REACTIONS
-	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='reactions';`).Scan(&tableName)
+	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='message_reactions';`).Scan(&tableName)
 	if errors.Is(err, sql.ErrNoRows) {
 		sqlStmt := `
             CREATE TABLE message_reactions (
@@ -232,10 +232,10 @@ func New(db *sql.DB) (AppDatabase, error) {
         `
 		_, err = db.Exec(sqlStmt)
 		if err != nil {
-			return nil, fmt.Errorf("error creating 'reactions' table: %w", err)
+			return nil, fmt.Errorf("error creating 'message_reactions' table: %w", err)
 		}
 	} else if err != nil {
-		return nil, fmt.Errorf("error querying 'reactions' table existence: %w", err)
+		return nil, fmt.Errorf("error querying 'message_reactions' table existence: %w", err)
 	}
 
 	return &appdbimpl{
