@@ -28,5 +28,6 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.PathPrefix("/images/").Handler(http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
 	rt.router.HandleFunc("/users/{userId}/pfp", rt.setUserPhoto).Methods("PUT")
 	rt.router.HandleFunc("/conversations/{convId}/group_photo", rt.setGroupPhoto).Methods("PUT")
+	rt.router.HandleFunc("/conversations/{convId}/group_name", rt.setGroupName).Methods("PUT")
 	return rt.router
 }

@@ -60,6 +60,7 @@ type AppDatabase interface {
 	SetUserPhoto(userId schemas.UserId, photoUrl string) error
 	SetGroupPhoto(convId schemas.ConversationId, photoUrl string) error
 	IsUserInConversation(convId schemas.ConversationId, userId schemas.UserId) (bool, error)
+	SetGroupName(convId schemas.ConversationId, newName string) error
 
 	Ping() error
 }
