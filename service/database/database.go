@@ -62,6 +62,7 @@ type AppDatabase interface {
 	IsUserInConversation(convId schemas.ConversationId, userId schemas.UserId) (bool, error)
 	SetGroupName(convId schemas.ConversationId, newName string) error
 	GetMessage(messageId schemas.MessageId) (schemas.Message, error)
+	MarkAsSeen(convId schemas.ConversationId, messageId schemas.MessageId, userId schemas.UserId) error
 
 	Ping() error
 }
