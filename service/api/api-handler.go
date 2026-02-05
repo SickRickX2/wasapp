@@ -29,5 +29,6 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.HandleFunc("/users/{userId}/pfp", rt.setUserPhoto).Methods("PUT")
 	rt.router.HandleFunc("/conversations/{convId}/group_photo", rt.setGroupPhoto).Methods("PUT")
 	rt.router.HandleFunc("/conversations/{convId}/group_name", rt.setGroupName).Methods("PUT")
+	rt.router.HandleFunc("/conversations/{convId}/messages/{messageId}/forwarded", rt.forwardMessage).Methods("POST")
 	return rt.router
 }
