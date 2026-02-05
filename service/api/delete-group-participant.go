@@ -9,19 +9,19 @@ import (
 )
 
 func (rt *_router) removeFromGroup(w http.ResponseWriter, r *http.Request) {
-	// 1. Autenticazione
+	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// 2. Parametri Path
+	// prende i parametri
 	vars := mux.Vars(r)
 	convId := schemas.ConversationId(vars["convId"])
 	targetUserId := schemas.UserId(vars["userId"])
 
-	// 3. Chiama DB
+	//  rimuove il membro
 	err := rt.db.RemoveGroupMember(convId, targetUserId)
 	if err != nil {
 		switch err.Error() {
@@ -38,6 +38,6 @@ func (rt *_router) removeFromGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. Successo
+	// risposta
 	w.WriteHeader(http.StatusNoContent)
 }

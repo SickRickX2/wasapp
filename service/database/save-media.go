@@ -9,7 +9,7 @@ func (db *appdbimpl) SaveMedia(media schemas.Media, mediaId string) error {
 		INSERT INTO media (mediaId, url, filename, mimeType, size, createdAt)
 		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 	`
-	// Nota: L'URL che salviamo è relativo, es: "/images/xyz.jpg"
+	// salva il media nel database
 	_, err := db.c.Exec(query, mediaId, media.URL, media.Filename, media.MimeType, media.Size)
 	return err
 }

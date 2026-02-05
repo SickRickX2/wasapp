@@ -9,7 +9,7 @@ import (
 )
 
 func (rt *_router) getConversations(w http.ResponseWriter, r *http.Request) {
-	// 1. Autenticazione
+	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -17,7 +17,7 @@ func (rt *_router) getConversations(w http.ResponseWriter, r *http.Request) {
 	}
 	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
 
-	// 2. Chiama DB
+	// prende le conversazioni dal db
 	conversations, err := rt.db.GetConversations(userId)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error retrieving conversations")
@@ -25,7 +25,7 @@ func (rt *_router) getConversations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Rispondi
+	// risposta
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(conversations)
 }

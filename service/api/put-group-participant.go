@@ -9,21 +9,19 @@ import (
 )
 
 func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request) {
-	// 1. Autenticazione (Chi sta facendo l'aggiunta?)
-	// In una app reale controlleremmo se chi fa la richiesta è amministratore o membro del gruppo.
-	// Per ora controlliamo solo che sia loggato.
+	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// 2. Parametri dal Path
+	// prende i parametri
 	vars := mux.Vars(r)
 	convId := schemas.ConversationId(vars["convId"])
 	targetUserId := schemas.UserId(vars["userId"]) // L'utente da aggiungere
 
-	// 3. Chiama il DB
+	// aggiunge il membro al gruppo
 	err := rt.db.AddGroupMember(convId, targetUserId)
 	if err != nil {
 		if err.Error() == "cannot add members to a private conversation" {
@@ -35,6 +33,6 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. Successo (204 No Content)
+	// risposta
 	w.WriteHeader(http.StatusNoContent)
 }

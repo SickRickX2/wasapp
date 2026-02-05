@@ -9,7 +9,7 @@ import (
 )
 
 func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request) {
-	// 1. Autenticazione (Chi crea il gruppo?)
+	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -22,7 +22,7 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	creatorId := schemas.UserId(parts[1])
 
-	// 2. Parsing Body
+	// parsa il body
 	var req struct {
 		GroupName    string           `json:"groupName"`
 		Participants []schemas.UserId `json:"participants"`
@@ -32,14 +32,14 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Validazione
+	// validazione
 	if len(req.GroupName) < 1 || len(req.GroupName) > 30 {
 		http.Error(w, "Group name must be between 1 and 30 chars", http.StatusBadRequest)
 		return
 	}
-	// Possiamo anche controllare che la lista non sia vuota, ma non è obbligatorio
+	// forse dovrei controlalre  che la lista non sia vuota ma non è obbligatorio
 
-	// 4. Chiama DB
+	// crea il gruppo
 	group, err := rt.db.CreateGroup(creatorId, req.GroupName, req.Participants)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error creating group")
@@ -47,7 +47,7 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5. Risposta
+	//risposta
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(group)

@@ -5,11 +5,10 @@ import (
 )
 
 func (db *appdbimpl) GetConversations(userId schemas.UserId) ([]schemas.Conversation, error) {
-	// Definiamo una struct temporanea che unisce i campi di Group e PrivateConversation
-	// per poterli restituire in un'unica lista eterogenea
+
 	var convs []schemas.Conversation
 
-	// Selezioniamo le conversazioni a cui l'utente partecipa
+	// prende tutte le conversazioni in cui partecipa
 	const query = `
 		SELECT c.convId, c.kind, c.groupName, c.createdAt
 		FROM conversations c
@@ -26,7 +25,7 @@ func (db *appdbimpl) GetConversations(userId schemas.UserId) ([]schemas.Conversa
 
 	for rows.Next() {
 		var c schemas.Conversation
-		var groupName *string // Può essere NULL nelle chat private
+		var groupName *string
 
 		err := rows.Scan(&c.ConvId, &c.Type, &groupName, &c.CreatedAt)
 		if err != nil {
@@ -37,11 +36,7 @@ func (db *appdbimpl) GetConversations(userId schemas.UserId) ([]schemas.Conversa
 			c.GroupName = *groupName
 		}
 
-		// Nota: Per fare le cose fatte bene (come da specifica), qui dovremmo anche:
-		// 1. Recuperare l'ultimo messaggio (LastMessage)
-		// 2. Contare i messaggi non letti (UnreadCount)
-		// Ma per ora lasciamoli vuoti/zero per far funzionare la lista base.
-
+		// TODO: prendere l'ultimo messaggio e contare i mesaggi non letti
 		convs = append(convs, c)
 	}
 
@@ -49,7 +44,7 @@ func (db *appdbimpl) GetConversations(userId schemas.UserId) ([]schemas.Conversa
 		return nil, err
 	}
 
-	// Se vuoto, ritorna array vuoto non nil
+	// non deve restituire nil
 	if convs == nil {
 		convs = make([]schemas.Conversation, 0)
 	}

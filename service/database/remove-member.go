@@ -8,7 +8,7 @@ import (
 )
 
 func (db *appdbimpl) RemoveGroupMember(convId schemas.ConversationId, userId schemas.UserId) error {
-	// 1. Verifica che sia un GRUPPO
+	// controlla se è un gruppo
 	const checkQuery = `SELECT kind FROM conversations WHERE convId = ?`
 	var kind string
 	err := db.c.QueryRow(checkQuery, convId).Scan(&kind)
@@ -22,14 +22,14 @@ func (db *appdbimpl) RemoveGroupMember(convId schemas.ConversationId, userId sch
 		return errors.New("cannot remove members from a private conversation")
 	}
 
-	// 2. Rimuovi l'utente dalla tabella partecipanti
+	// toglie l'utente
 	const deleteQuery = `DELETE FROM conversation_participants WHERE convId = ? AND userId = ?`
 	res, err := db.c.Exec(deleteQuery, convId, userId)
 	if err != nil {
 		return err
 	}
 
-	// Opzionale: controlla se l'abbiamo rimosso davvero
+	// controlla se è stato effettivamente rimosso
 	rows, _ := res.RowsAffected()
 	if rows == 0 {
 		return errors.New("user not in group")
