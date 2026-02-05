@@ -63,6 +63,8 @@ type AppDatabase interface {
 	SetGroupName(convId schemas.ConversationId, newName string) error
 	GetMessage(messageId schemas.MessageId) (schemas.Message, error)
 	MarkAsSeen(convId schemas.ConversationId, messageId schemas.MessageId, userId schemas.UserId) error
+	ReactToMessage(messageId schemas.MessageId, userId schemas.UserId, emoji string) error
+	UnreactToMessage(messageId schemas.MessageId, userId schemas.UserId) error
 
 	Ping() error
 }
@@ -217,7 +219,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='reactions';`).Scan(&tableName)
 	if errors.Is(err, sql.ErrNoRows) {
 		sqlStmt := `
-            CREATE TABLE reactions (
+            CREATE TABLE message_reactions (
                 messageId TEXT NOT NULL,
                 userId TEXT NOT NULL,
                 emoji TEXT NOT NULL,
