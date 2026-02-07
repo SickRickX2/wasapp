@@ -33,5 +33,6 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.HandleFunc("/conversations/{convId}/messages/{messageId}/seen", rt.markAsSeen).Methods("PUT")
 	rt.router.HandleFunc("/conversations/{convId}/messages/{messageId}/reaction", rt.setReaction).Methods("PUT")
 	rt.router.HandleFunc("/conversations/{convId}/messages/{messageId}/reaction", rt.removeReaction).Methods("DELETE")
+	rt.router.HandleFunc("/session", rt.logout).Methods("DELETE")
 	return rt.router
 }
