@@ -102,27 +102,6 @@ func New(db *sql.DB) (AppDatabase, error) {
 		// Se c'è un errore nella query (es. connessione), fallo risalire
 		return nil, fmt.Errorf("error querying 'users' table existence: %w", err)
 	}
-
-	// TABLE SESSIONS
-	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='sessions';`).Scan(&tableName)
-	if errors.Is(err, sql.ErrNoRows) {
-		sqlStmt := `
-            CREATE TABLE sessions (
-                token TEXT NOT NULL PRIMARY KEY,
-                userId TEXT NOT NULL,
-                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-                expiresAt DATETIME DEFAULT NULL,
-
-                FOREIGN KEY (userId) REFERENCES users(userId) ON DELETE CASCADE
-            );
-        `
-		_, err = db.Exec(sqlStmt)
-		if err != nil {
-			return nil, fmt.Errorf("error creating 'sessions' table: %w", err)
-		}
-	} else if err != nil {
-		return nil, fmt.Errorf("error querying 'sessions' table existence: %w", err)
-	}
 	// --------------------------------------------------------
 	// TABLE CONVERSATIONS
 	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='conversations';`).Scan(&tableName)
