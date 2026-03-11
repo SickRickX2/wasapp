@@ -4,18 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings" // <--- Aggiunto per gestire il Bearer Token
+	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request) {
-	// 1. Prende i parametri dall'url
-	vars := mux.Vars(r)
-	convId := schemas.ConversationId(vars["convId"])
+func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	convId := schemas.ConversationId(ps.ByName("convId"))
 
-	// 2. Autenticazione (Estraiamo lo UserId)
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -23,8 +20,7 @@ func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
 
-	// 3. NUOVO: Controllo Sicurezza (Sei parte della chat?)
-	// Usiamo la funzione che hai già creato in check-membership.go
+	// controlla se l'utente è nella conversazione
 	isInConv, err := rt.db.IsUserInConversation(convId, userId)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error checking conversation membership")
@@ -36,7 +32,7 @@ func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. Prende i parametri di paginazione
+	// prende i parametri di paginazione
 	limit := 20
 	if l := r.URL.Query().Get("limit"); l != "" {
 		parsedLimit, err := strconv.Atoi(l)
@@ -46,7 +42,7 @@ func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	beforeId := r.URL.Query().Get("beforeId")
 
-	// 5. Chiama il db per i messaggi
+	// chiama il db per i messaggi
 	msgs, err := rt.db.GetConversationMessages(convId, limit, beforeId)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error retrieving messages")
@@ -54,7 +50,7 @@ func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 6. Risposta
+	// risposta
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(msgs); err != nil {
 		rt.baseLogger.WithError(err).Error("Error encoding response")

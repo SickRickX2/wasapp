@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) setUserPhoto(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) setUserPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -19,8 +20,8 @@ func (rt *_router) setUserPhoto(w http.ResponseWriter, r *http.Request) {
 	requestingUserId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
 
 	// 2. Controllo Identità (Solo tu puoi cambiare la tua foto)
-	vars := mux.Vars(r)
-	targetUserId := schemas.UserId(vars["userId"])
+	vars := ps
+	targetUserId := schemas.UserId(vars.ByName("userId"))
 
 	if requestingUserId != targetUserId {
 		http.Error(w, "You can only update your own photo", http.StatusForbidden)

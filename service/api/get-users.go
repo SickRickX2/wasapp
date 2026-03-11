@@ -3,9 +3,11 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) searchUsers(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	//  legge la query
 	query := r.URL.Query().Get("q")
 

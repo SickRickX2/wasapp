@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
 // PUT /conversations/{convId}/messages/{messageId}/reaction
-func (rt *_router) setReaction(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) setReaction(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Auth
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -20,8 +20,8 @@ func (rt *_router) setReaction(w http.ResponseWriter, r *http.Request) {
 	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
 
 	// 2. Path Params
-	vars := mux.Vars(r)
-	messageId := schemas.MessageId(vars["messageId"])
+	vars := ps
+	messageId := schemas.MessageId(vars.ByName("messageId"))
 	// convId c'è nell'URL ma non ci serve strettamente per la query SQL diretta sul messaggio,
 	// ma potremmo usarlo per verificare che il messaggio appartenga a quella chat.
 
@@ -57,7 +57,7 @@ func (rt *_router) setReaction(w http.ResponseWriter, r *http.Request) {
 }
 
 // DELETE /conversations/{convId}/messages/{messageId}/reaction
-func (rt *_router) removeReaction(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) removeReaction(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Auth
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -67,8 +67,8 @@ func (rt *_router) removeReaction(w http.ResponseWriter, r *http.Request) {
 	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
 
 	// 2. Path Params
-	vars := mux.Vars(r)
-	messageId := schemas.MessageId(vars["messageId"])
+	vars := ps
+	messageId := schemas.MessageId(vars.ByName("messageId"))
 
 	// 3. DB Call
 	err := rt.db.UnreactToMessage(messageId, userId)

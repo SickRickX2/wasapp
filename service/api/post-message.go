@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
@@ -26,8 +26,8 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request) {
 	senderId := schemas.UserId(parts[1])
 
 	// prende la conversazione
-	vars := mux.Vars(r)
-	convId := schemas.ConversationId(vars["convId"])
+	vars := ps
+	convId := schemas.ConversationId(vars.ByName("convId"))
 
 	// prende il messaggio dal body
 	// MODIFICA QUI: Aggiungiamo ReplyToId alla struct di ricezione

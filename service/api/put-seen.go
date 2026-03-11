@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) markAsSeen(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) markAsSeen(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -18,9 +18,9 @@ func (rt *_router) markAsSeen(w http.ResponseWriter, r *http.Request) {
 	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
 
 	// 2. Parametri Path
-	vars := mux.Vars(r)
-	convId := schemas.ConversationId(vars["convId"])
-	messageId := schemas.MessageId(vars["messageId"])
+	vars := ps
+	convId := schemas.ConversationId(vars.ByName("convId"))
+	messageId := schemas.MessageId(vars.ByName("messageId"))
 
 	// 3. Controllo Sicurezza: Sono nella chat?
 	// (Opzionale ma consigliato, anche se MarkAsSeen filtra già per senderId != me)

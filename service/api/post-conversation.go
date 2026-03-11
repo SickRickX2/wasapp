@@ -6,9 +6,10 @@ import (
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) createConversation(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) createConversation(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// prende l'utente
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {

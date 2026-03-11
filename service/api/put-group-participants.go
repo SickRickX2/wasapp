@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -18,8 +18,8 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Parametri Path (Solo ID Conversazione)
-	vars := mux.Vars(r)
-	convId := schemas.ConversationId(vars["convId"])
+	vars := ps
+	convId := schemas.ConversationId(vars.ByName("convId"))
 
 	// 3. Parsing Body (Lista utenti)
 	var req struct {

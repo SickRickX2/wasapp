@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -20,8 +20,8 @@ func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request) {
 	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
 
 	// 2. Parametri Path
-	vars := mux.Vars(r)
-	convId := schemas.ConversationId(vars["convId"])
+	vars := ps
+	convId := schemas.ConversationId(vars.ByName("convId"))
 
 	// 3. Controllo Permessi: L'utente fa parte del gruppo?
 	isInGroup, err := rt.db.IsUserInConversation(convId, userId)

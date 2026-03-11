@@ -41,7 +41,7 @@ import (
 	"net/http"
 
 	"github.com/SickRickX2/wasapp/service/database"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
 )
 
@@ -75,9 +75,9 @@ func New(cfg Config) (Router, error) {
 
 	// Create a new router where we will register HTTP endpoints. The server will pass requests to this router to be
 	// handled.
-	router := mux.NewRouter()
-	//router.RedirectTrailingSlash = false
-	//router.RedirectFixedPath = false
+	router := httprouter.New()
+	router.RedirectTrailingSlash = false
+	router.RedirectFixedPath = false
 
 	return &_router{
 		router:     router,
@@ -87,7 +87,7 @@ func New(cfg Config) (Router, error) {
 }
 
 type _router struct {
-	router *mux.Router
+	router *httprouter.Router
 	// baseLogger is a logger for non-requests contexts, like goroutines or background tasks not started by a request.
 	// Use context logger if available (e.g., in requests) instead of this logger.
 	baseLogger logrus.FieldLogger

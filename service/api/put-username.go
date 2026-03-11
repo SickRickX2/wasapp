@@ -6,13 +6,13 @@ import (
 	"regexp"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) setUsername(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) setUsername(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// prende l'utente dal path
-	vars := mux.Vars(r)
-	userId := schemas.UserId(vars["userId"])
+	vars := ps
+	userId := schemas.UserId(vars.ByName("userId"))
 
 	// legge il body
 	var req struct {

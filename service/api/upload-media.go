@@ -10,9 +10,10 @@ import (
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Autenticazione (bisogna essere loggati per caricare file)
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {

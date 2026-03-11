@@ -6,33 +6,43 @@ import (
 
 // Handler returns an instance of httprouter.Router that handle APIs registered here
 func (rt *_router) Handler() http.Handler {
-	// Register routes
-	//rt.router.GET("/", rt.getHelloWorld)
-	rt.router.HandleFunc("/session", rt.doLogin).Methods("POST")
-	//rt.router.GET("/context", rt.wrap(rt.getContextReply))
-	// Special routes
-	//rt.router.GET("/liveness", rt.liveness)
-	//rt.router.HandleFunc("/users/{userId}/username", rt.setUsername).Methods("PUT")
-	rt.router.HandleFunc("/liveness", rt.liveness).Methods("GET")
-	rt.router.HandleFunc("/users/{userId}/username", rt.setUsername).Methods("PUT")
-	rt.router.HandleFunc("/users", rt.searchUsers).Methods("GET")
-	rt.router.HandleFunc("/conversations", rt.createConversation).Methods("POST")
-	rt.router.HandleFunc("/conversations/{convId}/messages", rt.sendMessage).Methods("POST")
-	rt.router.HandleFunc("/conversations/{convId}/messages", rt.getMessages).Methods("GET")
-	rt.router.HandleFunc("/conversations/{convId}/messages/{messageId}", rt.deleteMessage).Methods("DELETE")
-	rt.router.HandleFunc("/groups", rt.createGroup).Methods("POST")
-	rt.router.HandleFunc("/conversations/{convId}/participants", rt.addToGroup).Methods("POST")
-	rt.router.HandleFunc("/conversations/{convId}/participants/{userId}", rt.removeFromGroup).Methods("DELETE")
-	rt.router.HandleFunc("/conversations", rt.getConversations).Methods("GET")
-	rt.router.HandleFunc("/media", rt.uploadMedia).Methods("POST")
-	rt.router.PathPrefix("/images/").Handler(http.StripPrefix("/images/", http.FileServer(http.Dir("./images"))))
-	rt.router.HandleFunc("/users/{userId}/pfp", rt.setUserPhoto).Methods("PUT")
-	rt.router.HandleFunc("/conversations/{convId}/group_photo", rt.setGroupPhoto).Methods("PUT")
-	rt.router.HandleFunc("/conversations/{convId}/group_name", rt.setGroupName).Methods("PUT")
-	rt.router.HandleFunc("/conversations/{convId}/messages/{messageId}/forwarded", rt.forwardMessage).Methods("POST")
-	rt.router.HandleFunc("/conversations/{convId}/messages/{messageId}/seen", rt.markAsSeen).Methods("PUT")
-	rt.router.HandleFunc("/conversations/{convId}/messages/{messageId}/reaction", rt.setReaction).Methods("PUT")
-	rt.router.HandleFunc("/conversations/{convId}/messages/{messageId}/reaction", rt.removeReaction).Methods("DELETE")
-	rt.router.HandleFunc("/session", rt.logout).Methods("DELETE")
+	// --- Sessione ---
+	rt.router.POST("/session", rt.doLogin)
+	rt.router.DELETE("/session", rt.logout)
+
+	// liveness
+	rt.router.GET("/liveness", rt.liveness)
+
+	// --- users ---
+	rt.router.GET("/users", rt.searchUsers)
+	rt.router.PUT("/users/:userId/username", rt.setUsername)
+	rt.router.PUT("/users/:userId/pfp", rt.setUserPhoto)
+
+	// --- conversations ---
+	rt.router.GET("/conversations", rt.getConversations)
+	rt.router.POST("/conversations", rt.createConversation)
+	rt.router.POST("/groups", rt.createGroup)
+	rt.router.POST("/conversations/:convId/participants", rt.addToGroup)
+	rt.router.DELETE("/conversations/:convId/participants/:userId", rt.removeFromGroup)
+	rt.router.PUT("/conversations/:convId/group_photo", rt.setGroupPhoto)
+	rt.router.PUT("/conversations/:convId/group_name", rt.setGroupName)
+
+	// --- messages ---
+	rt.router.GET("/conversations/:convId/messages", rt.getMessages)
+	rt.router.POST("/conversations/:convId/messages", rt.sendMessage)
+	rt.router.DELETE("/conversations/:convId/messages/:messageId", rt.deleteMessage)
+	rt.router.POST("/conversations/:convId/messages/:messageId/forwarded", rt.forwardMessage)
+	rt.router.PUT("/conversations/:convId/messages/:messageId/seen", rt.markAsSeen)
+
+	// --- reactions ---
+	rt.router.PUT("/conversations/:convId/messages/:messageId/reaction", rt.setReaction)
+	rt.router.DELETE("/conversations/:convId/messages/:messageId/reaction", rt.removeReaction)
+
+	// --- media ---
+	rt.router.POST("/media", rt.uploadMedia)
+
+	// questo mi serve per accedere alle immagini caricate
+	rt.router.ServeFiles("/images/*filepath", http.Dir("./images"))
+
 	return rt.router
 }

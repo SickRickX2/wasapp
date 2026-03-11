@@ -6,9 +6,10 @@ import (
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) getConversations(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) getConversations(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {

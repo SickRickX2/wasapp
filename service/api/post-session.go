@@ -7,12 +7,13 @@ import (
 	"time"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
+	"github.com/julienschmidt/httprouter"
 )
 
 const charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
 const idLength = 8
 
-func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	var req struct {
 		Name string `json:"name"`
 	}

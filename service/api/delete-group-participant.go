@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) removeFromGroup(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) removeFromGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -17,9 +17,9 @@ func (rt *_router) removeFromGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// prende i parametri
-	vars := mux.Vars(r)
-	convId := schemas.ConversationId(vars["convId"])
-	targetUserId := schemas.UserId(vars["userId"])
+	vars := ps
+	convId := schemas.ConversationId(vars.ByName("convId"))
+	targetUserId := schemas.UserId(vars.ByName("userId"))
 
 	//  rimuove il membro
 	err := rt.db.RemoveGroupMember(convId, targetUserId)

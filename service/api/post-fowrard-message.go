@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -20,9 +21,9 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request) {
 	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
 
 	// 2. Parametri Path (Sorgente)
-	vars := mux.Vars(r)
-	sourceConvId := schemas.ConversationId(vars["convId"])
-	originalMessageId := schemas.MessageId(vars["messageId"])
+	vars := ps
+	sourceConvId := schemas.ConversationId(vars.ByName("convId"))
+	originalMessageId := schemas.MessageId(vars.ByName("messageId"))
 
 	// 3. Parsing Body (Destinazione)
 	var req struct {
@@ -71,19 +72,18 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 7. Crea il NUOVO messaggio (Copia)
+	// crea il nuovo messaggio da inoltrare
 	forwardedMsg := schemas.Message{
-		ID:      generateMessageId(), // Nuovo ID
-		Sender:  userId,              // Il mittente sei TU (che inoltri), non l'autore originale
-		Text:    originalMsg.Text,    // Copia testo
-		MediaId: originalMsg.MediaId, // Copia media
+		ID:      generateMessageId(),
+		Sender:  userId,
+		Text:    originalMsg.Text,
+		MediaId: originalMsg.MediaId,
 		Time:    time.Now(),
 		Status:  "sent",
-		Kind:    "forwarded", // <--- Importante!
+		Kind:    "forwarded",
 	}
 
-	// 8. Salva nel DB (Destinazione)
-	// Riutilizziamo la funzione CreateMessage che abbiamo già!
+	// salva il messaggio inoltrato nella chat di destinazione
 	err = rt.db.CreateMessage(req.DestinationConvId, forwardedMsg)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error saving forwarded message")
@@ -91,7 +91,7 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 9. Risposta (Restituisce il nuovo messaggio creato)
+	// risposta
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(forwardedMsg)

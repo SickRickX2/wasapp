@@ -6,10 +6,10 @@ import (
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
-	"github.com/gorilla/mux"
+	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request) {
+func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
@@ -24,9 +24,9 @@ func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request) {
 	userId := schemas.UserId(parts[1])
 
 	// prende i parametri dall'url
-	vars := mux.Vars(r)
-	convId := schemas.ConversationId(vars["convId"])
-	messageId := schemas.MessageId(vars["messageId"])
+	vars := ps
+	convId := schemas.ConversationId(vars.ByName("convId"))
+	messageId := schemas.MessageId(vars.ByName("messageId"))
 
 	// cancella dal db
 	updatedMsg, err := rt.db.DeleteMessage(convId, messageId, userId)
