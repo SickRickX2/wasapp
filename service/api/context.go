@@ -2,8 +2,6 @@ package api
 
 import (
 	"context"
-
-	_ "github.com/gorilla/mux"
 )
 
 type authKey string
