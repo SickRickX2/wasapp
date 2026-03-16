@@ -66,6 +66,8 @@ paths:
                 properties:
                   identifier:
                     $ref: '#/components/schemas/UserId'
+                example:
+                  identifier: "usr_a1B2c3"
                 required:
                   - identifier
         '400' : { $ref: "#/components/responses/BadRequest" }
@@ -120,6 +122,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+              example:
+                userId: "usr_a1B2c3"
+                userName: "Pippox2"
+                pfp: "https://example.com/media/img_123.png"
+                createdAt: "2024-01-01T12:00:00Z"
         '400' : { $ref: "#/components/responses/BadRequest" }
 
   /users/{userId}/pfp:
@@ -135,18 +142,23 @@ paths:
           required: true
           schema:
             $ref: '#/components/schemas/UserId'
-      responses:
+      responses: 
         '200':
           description: URL della foto profilo recuperato con successo.
           content:
             application/json:
               schema:
                 type: object
+                description: Payload contenente l'URL della foto profilo dell'utente.
+                example:
+                  pfpUrl: "https://example.com/media/img_123.png"
                 properties:
                   pfpUrl:
+                    example: "https://example.com/media/img_123.png"
                     type: string
                     format: url
                     description: L'URL pubblico della foto profilo.
+                
         '404':
           $ref: '#/components/responses/NotFoundResponse'
     put: 
@@ -168,7 +180,7 @@ paths:
               type: object
               description: profile picture
               properties:
-                pfp:
+                file:
                   description: user's profile picture
                   type: string
                   format: binary
@@ -176,13 +188,38 @@ paths:
                   minLength: 1
                   maxLength: 5242880 
         required: true
+
+
       responses: 
-        '204':
-          description: Profile picture set successful
+        '200':
+          description: URL della foto profilo recuperato con successo.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Payload contenente l'URL della foto profilo dell'utente.
+                example:
+                  pfpUrl: "https://example.com/media/img_123.png"               
+                properties:
+                  pfpUrl:
+                    example: "https://example.com/media/img_123.png"
+                    type: string
+                    format: url
+                    description: L'URL pubblico della foto profilo.
+                    
         '400' : { $ref: "#/components/responses/BadRequest" }
         '401' : { $ref: "#/components/responses/Unauthorized" }
         '403' : 
           description: Forbidden - You can only update your own photo
+          content:
+            application/json:
+              schema:
+                description: Error payload for forbidden actions
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Human-readable error message
     delete:
       summary: Rimuove la foto profilo
       description: Rimuove l'immagine corrente dell'utente autenticato, tornando all'immagine di default (o a null).
@@ -194,7 +231,7 @@ paths:
           required: true
           description: user's id
           schema: 
-           $ref: '#/components/schemas/UserId'
+           $ref: '#/components/schemas/User'
       responses:
         '204':
           description: Foto profilo rimossa con successo. Viene restituito lo stato aggiornato.
@@ -214,11 +251,15 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              description: The file to upload (max 5MB)
               properties:
                 file:
                   type: string
                   format: binary
                   description: The file to upload (max 5MB)
+                  minLength: 1
+                  maxLength: 5242880
+                  pattern: '^.*$'
               required:
                 - file
       responses:
@@ -228,6 +269,7 @@ paths:
             application/json:
               schema:
                 type: object
+                description: Response containing the media ID and public URL
                 properties:
                   mediaId:
                     type: string
@@ -236,6 +278,9 @@ paths:
                     type: string
                     format: url
                     description: Public URL of the file
+                example:
+                    mediaId: "med_12345"
+                    url: "https://cdn.wasatext.com/media/med_12345.png"
                 required:
                   - mediaId
                   - url
@@ -243,6 +288,16 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '413':
           description: Payload Too Large - The uploaded file exceeds the maximum allowed size of 5MB.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Error payload for file size limit exceeded
+                properties:
+                  message:
+                    type: string
+                    description: Error message indicating the file is too large
+          
 
 
 
@@ -260,19 +315,25 @@ paths:
             application/json:
               schema:
                 type: object
+                description: Payload to start a private conversation
                 properties:
                   recipientId:
                     description: The User ID of the person you want to talk to.
-                    $ref: '#/components/schemas/UserId'
+                    allOf:
+                      - $ref: '#/components/schemas/UserId'
                 required:
                   - recipientId
         responses:
-          '200':
+          '201':
             description: Conversation created or retrieved successfully.
             content:
               application/json:
                 schema:
-                  $ref: '#/components/schemas/PrivateConversation'
+                  $ref: '#/components/schemas/Conversation'
+                example:
+                  convId: "conv_123456"
+                  type: "private"
+                  participants: ["usr_123", "usr_456"]
           '404':
             description: Recipient user not found.
             content:
@@ -294,12 +355,14 @@ paths:
             application/json:
               schema:
                 type: object
+                description: Payload to create a new group conversation
                 properties:
                   groupName:
                     type: string
                     description: The name of the group.
                     minLength: 1
                     maxLength: 30
+                    pattern: '^[A-Za-z0-9\s_-]+$'
                     example: "Study Group 2026"
                   participants:
                     type: array
@@ -318,6 +381,11 @@ paths:
               application/json:
                 schema:
                   $ref: '#/components/schemas/Group'
+                example:
+                  convId: "conv_78910"
+                  type: "group"
+                  groupName: "Study Group 2026"
+                  participants: ["usr_123", "usr_456", "usr_789"]
           '400':
             $ref: '#/components/responses/BadRequest'
 
@@ -358,6 +426,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Group'
+              example:
+                convId: "conv_78910"
+                type: "group"
+                groupName: "Study Group 2026"
+                participants: ["usr_123", "usr_456", "usr_789", "usr_101"]
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -383,6 +456,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Group'
+              example:
+                convId: "conv_78910"
+                type: "group"
+                groupName: "Study Group 2026"
+                participants: ["usr_123", "usr_456"]  # Assuming the user leaving was usr_789
         '404':
           $ref: '#/components/responses/NotFoundResponse'
 
@@ -407,7 +485,7 @@ paths:
               type: object
               description: photo of the group chat
               properties:
-                groupPhoto:
+                file:
                   description: group chat's photo
                   type: string
                   pattern: '^.+$'
@@ -421,6 +499,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Group'
+              example:
+                convId: "conv_78910"
+                type: "group"
+                groupName: "Study Group 2026"
+                participants: ["usr_123", "usr_456", "usr_789"]
+                groupPhotoUrl: "https://example.com/media/group_photo_123.png"
         '400':
           $ref: '#/components/responses/BadRequest'
 
@@ -460,6 +544,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Group'
+              example:
+                convId: "conv_78910"
+                type: "group"
+                groupName: "New Study Group Name"
+                participants: ["usr_123", "usr_456", "usr_789"]
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -482,12 +571,13 @@ paths:
           description: conversation details
           content:
             application/json:
+              example:
+                convId: "conv_123456"
+                type: "private"
+                participants: ["usr_123", "usr_456"]
               schema:
-                oneOf:
-                  - $ref: '#/components/schemas/PrivateConversation'
-                  - $ref: '#/components/schemas/Group'
-                discriminator:
-                  propertyName: type
+                $ref: '#/components/schemas/Conversation'
+                
         '404':
           $ref: '#/components/responses/NotFoundResponse'
   /users/{userId}/conversations:
@@ -508,6 +598,20 @@ paths:
           description: list of conversations
           content:
             application/json:
+              example:
+                conversations: [
+                  {
+                    convId: "conv_123456",
+                    type: "private",
+                    participants: ["usr_123", "usr_456"]
+                  },
+                  {
+                    convId: "conv_78910",
+                    type: "group",
+                    groupName: "Study Group 2026",
+                    participants: ["usr_123", "usr_456", "usr_789"]
+                  }
+                ]
               schema:
                 type: object
                 description: all the conversations of the user
@@ -516,9 +620,7 @@ paths:
                     description: array of all the conversations of the user
                     type: array
                     items:
-                      oneOf:
-                        - $ref: '#/components/schemas/PrivateConversation'
-                        - $ref: '#/components/schemas/Group'
+                      $ref: '#/components/schemas/Conversation'
                     minItems: 0
                     maxItems: 100
         '404':
@@ -539,6 +641,7 @@ paths:
           schema:
            $ref: '#/components/schemas/ConversationId'
         - name: messageId
+          description: message's id
           in: path
           required: true
           schema:
@@ -552,28 +655,28 @@ paths:
               schema:
                 $ref: "#/components/schemas/Message"
               example:
-                messageId: "xyz123"
+                messageId: "msg_xyz123"
                 status: "deleted"
                 text: "This message has been deleted"
-                sender: "pippo456"
+                sender: "usr_pippo456"
         '404':
           $ref: '#/components/responses/NotFoundResponse'
         '400':
           $ref: "#/components/responses/BadRequest"
           
   /conversations/{convId}/messages:
+    parameters:
+      - name: convId
+        in: path
+        required: true
+        description: conversation's id
+        schema:
+          $ref: '#/components/schemas/ConversationId'
     post: 
         operationId: sendMessage
         tags: ["messages"]
         summary: the user send a message to the conversation
         description: Send a new message to the specified conversation.
-        parameters:
-          - name: convId
-            in: path
-            required: true
-            description: conversation's id
-            schema:
-              $ref: '#/components/schemas/ConversationId'
         requestBody:
           required: true
           description: Message payload to send
@@ -590,17 +693,14 @@ paths:
             $ref: '#/components/responses/BadRequest'
 
     get:
+      operationId: getMessages
       summary: Get conversation history
       description: Retrieve messages from a conversation (with pagination)
       tags: ["messages", "get"]
       parameters:
-        - name: convId
-          in: path
-          required: true
-          schema:
-            $ref: '#/components/schemas/ConversationId'
         - name: limit
           in: query
+          description: Number of messages to retrieve (pagination limit)
           schema:
             type: integer
             default: 20
@@ -609,15 +709,46 @@ paths:
           description: Message ID to start pagination from (cursor)
           schema:
             type: string
+            minLength: 7
+            maxLength: 64
+            pattern: '^msg_[A-Za-z0-9_-]+$'
       responses:
         '200':
           description: List of messages in the conversation
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Message'
+                type: object
+                description: Paginated list of messages in the conversation
+                properties:
+                  messages:
+                    type: array
+                    description: "Array of messages"
+                    minItems: 0
+                    maxItems: 100
+                    items:
+                      $ref: '#/components/schemas/Message'
+                example:
+                  messages: [
+                    {
+                      messageId: "msg_123",
+                      text: "Hello!",
+                      sender: "usr_123",
+                      time: "2024-01-01T12:00:00Z",
+                      status: "sent",
+                      reactions: [
+                        { userId: "usr_456", emoji: "👍" }
+                      ]
+                    },
+                    {
+                      messageId: "msg_124",
+                      text: "Hi there!",
+                      sender: "usr_456",
+                      time: "2024-01-01T12:01:00Z",
+                      status: "sent",
+                      reactions: []
+                    }
+                  ]
 
   /conversations/{convId}/messages/{messageId}/forwarded:
     post:
@@ -637,6 +768,7 @@ paths:
       - name: messageId
         in: path
         required: true
+        description: message's id of the message to forward
         schema: { $ref: '#/components/schemas/MessageId' }
 
       requestBody:
@@ -645,6 +777,7 @@ paths:
           application/json:
             schema:
               type: object
+              description: Payload to forward a message to another conversation
               properties:
                 destinationConversationId:
                   $ref: '#/components/schemas/ConversationId'
@@ -657,6 +790,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Message"
+              example:
+                messageId: "msg_forwarded_123"
+                text: "Hello! (forwarded)"
+                sender: "usr_123"
+                time: "2024-01-01T12:00:00Z"
+                status: "sent"
+                kind: "forwarded"
+                reactions: []
         '404':
           $ref: '#/components/responses/NotFoundResponse'
         '400':
@@ -664,6 +805,7 @@ paths:
 
   /users:
       get:
+        operationId: searchUsers
         summary: Search users
         description: Search for users by part of their name
         tags: ["get"]
@@ -674,18 +816,55 @@ paths:
             schema:
               type: string
               minLength: 1
+              maxLength: 50
+              pattern: '^.*$'
         responses:
           '200':
             description: List of matching users
             content:
               application/json:
-                schema:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/User'
+               schema:
+                type: object
+                description: Search results for users matching the query
+                properties:
+                  users:
+                    type: array
+                    description: "List of users matching the search"
+                    minItems: 0
+                    maxItems: 50
+                    items:
+                      $ref: '#/components/schemas/User'
+                example:
+                  users: [
+                    {
+                      userId: "usr_123",
+                      userName: "Pippo",
+                      pfp: "https://example.com/media/pippo.png",
+                      createdAt: "2024-01-01T12:00:00Z"
+                    },
+                    {
+                      userId: "usr_456",
+                      userName: "Pippo2",
+                      pfp: "https://example.com/media/pippo2.png",
+                      createdAt: "2024-02-01T12:00:00Z"
+                    }
+                  ]
   
 
   /conversations/{convId}/messages/{messageId}/reaction:
+    parameters:
+        - name: convId
+          in: path
+          required: true
+          description: conversation's id
+          schema:
+            $ref: '#/components/schemas/ConversationId'
+        - name: messageId
+          in: path
+          required: true
+          description: message's id
+          schema:
+            $ref: '#/components/schemas/MessageId'
     put:
       tags: ["messages"]
       summary: React to a message
@@ -694,26 +873,17 @@ paths:
         If the user already reacted, the old reaction is replaced with the new emoji.
         This enforces a "one reaction per user" policy (like WhatsApp/Instagram).
       operationId: setReaction
-      parameters:
-        - name: convId
-          in: path
-          required: true
-          schema:
-            $ref: '#/components/schemas/ConversationId'
-        - name: messageId
-          in: path
-          required: true
-          schema:
-            $ref: '#/components/schemas/MessageId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
+              description: Payload to set a reaction on a message
               type: object
               properties:
                 emoji:
                   type: string
+                  pattern: '^.+$'
                   description: The emoji to react with
                   minLength: 1
                   maxLength: 4
@@ -727,6 +897,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Message'
+              example:
+                messageId: "msg_123"
+                text: "Hello!"
+                sender: "usr_123"
+                time: "2024-01-01T12:00:00Z"
+                status: "sent"
+                reactions: [
+                  { userId: "usr_456", emoji: "👍" }
+                ]
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -737,17 +916,6 @@ paths:
       summary: Remove reaction
       description: Removes the user's reaction from the message (Un-react).
       operationId: deleteReaction
-      parameters:
-        - name: convId
-          in: path
-          required: true
-          schema:
-            $ref: '#/components/schemas/ConversationId'
-        - name: messageId
-          in: path
-          required: true
-          schema:
-            $ref: '#/components/schemas/MessageId'
       responses:
         '200':
           description: Reaction removed successfully. Returns the updated message.
@@ -755,6 +923,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Message'
+              example:
+                messageId: "msg_123"
+                text: "Hello!"
+                sender: "usr_123"
+                time: "2024-01-01T12:00:00Z"
+                status: "sent"
+                reactions: []  # Assuming the user had only one reaction which is now removed
         '404':
           $ref: '#/components/responses/NotFoundResponse'
   /conversations/{convId}/messages/{messageId}/seen:
@@ -769,11 +944,13 @@ paths:
         - name: convId
           in: path
           required: true
+          description: conversation's id
           schema:
             $ref: '#/components/schemas/ConversationId'
         - name: messageId
           in: path
           required: true
+          description: message's id
           schema:
             $ref: '#/components/schemas/MessageId'
       responses:
@@ -782,11 +959,15 @@ paths:
           content:
              application/json:
                schema:
+                 description: Payload indicating the message was marked as seen
                  type: object
                  properties:
                    success: 
+                     description: Indicates if the operation was successful
                      type: boolean
                      example: true
+               example:
+                  success: true
         '404':
           $ref: '#/components/responses/NotFoundResponse'
 
@@ -969,10 +1150,6 @@ components:
           pattern: '^.+$'
           minLength: 1
           maxLength: 150
-      oneOf:
-        - required: [text]
-        - required: [media]
-
     Media:
       type: object
       description: media attached to a message or can be the only message
@@ -1044,6 +1221,7 @@ components:
         emoji:
           type: string
           description: The emoji character
+          pattern: '^.+$'
           minLength: 1
           maxLength: 4 
       required:
@@ -1066,7 +1244,7 @@ components:
               type: string
               description: Group name
               default: "New_Group"
-              pattern: '^[A-Za-z0-9_-]+$'
+              pattern: '^[A-Za-z0-9\s_-]+$'
               minLength: 1
               maxLength: 64
             groupPhoto: 
@@ -1092,22 +1270,24 @@ components:
               description: Group creation date
           required:
             - participants  
-    
-    PrivateConversation:
-          allOf:
-            - $ref: '#/components/schemas/Conversation'
-            - type: object
-              properties:
-                type:
-                  type: string
-                  enum: [private]
-                  default: private
-                participants:
-                  type: array
-                  description: Exactly two users in a private chat
-                  items:
-                    $ref: '#/components/schemas/UserId'
-                  minItems: 2
-                  maxItems: 2
-              required:
-                - participants
+
+
+#    PrivateConversation:
+#          allOf:
+#            - $ref: '#/components/schemas/Conversation'
+#            - type: object
+#              properties:
+#                type:
+#                  type: string
+#                  enum: [private]
+#                  default: private
+#                participants:
+#                  type: array
+#                  description: Exactly two users in a private chat
+#                  items:
+#                    $ref: '#/components/schemas/UserId'
+#                  minItems: 2
+#                  maxItems: 2
+#              required:
+#                - participants
+          
