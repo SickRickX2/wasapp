@@ -13,12 +13,11 @@ import (
 func (rt *_router) setUserPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	requestingUserId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
-
+	requestingUserId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
 	// 2. Controllo Identità (Solo tu puoi cambiare la tua foto)
 	vars := ps
 	targetUserId := schemas.UserId(vars.ByName("userId"))

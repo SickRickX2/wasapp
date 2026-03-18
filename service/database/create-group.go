@@ -60,7 +60,7 @@ func (db *appdbimpl) CreateGroup(creator schemas.UserId, name string, participan
 
 	// risposta con la struct del gruppo
 	group.ConvId = newConvID
-	group.Type = "group"
+	group.Type = groupType
 	group.GroupName = name
 	group.Participants = finalParticipants
 	group.CreatedAt = now

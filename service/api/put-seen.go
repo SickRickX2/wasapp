@@ -9,21 +9,19 @@ import (
 )
 
 func (rt *_router) markAsSeen(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Autenticazione
+	// authentication
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
-
-	// 2. Parametri Path
+	userId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
+	// path params
 	vars := ps
 	convId := schemas.ConversationId(vars.ByName("convId"))
 	messageId := schemas.MessageId(vars.ByName("messageId"))
 
-	// 3. Controllo Sicurezza: Sono nella chat?
-	// (Opzionale ma consigliato, anche se MarkAsSeen filtra già per senderId != me)
+	// controllo sicurezza
 	inConv, err := rt.db.IsUserInConversation(convId, userId)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

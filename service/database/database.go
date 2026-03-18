@@ -73,6 +73,8 @@ type appdbimpl struct {
 	c *sql.DB
 }
 
+const groupType = "group"
+
 // New returns a new instance of AppDatabase based on the SQLite connection `db`.
 // `db` is required - an error will be returned if `db` is `nil`.
 func New(db *sql.DB) (AppDatabase, error) {
@@ -122,7 +124,7 @@ func New(db *sql.DB) (AppDatabase, error) {
 		return nil, fmt.Errorf("error querying 'conversations' table existence: %w", err)
 	}
 	// --------------------------------------------------------
-	//TABLE MESSAGES
+	// TABLE MESSAGES
 	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='messages';`).Scan(&tableName)
 	if errors.Is(err, sql.ErrNoRows) {
 		sqlStmt := `CREATE TABLE messages (

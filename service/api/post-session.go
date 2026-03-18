@@ -50,7 +50,7 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter
 				CreatedAt: time.Now(),
 			}
 
-			//inserisce nel db
+			// inserisce nel db
 			err = rt.db.CreateUser(newUser)
 			if err == nil {
 

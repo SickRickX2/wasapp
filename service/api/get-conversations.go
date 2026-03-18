@@ -12,12 +12,11 @@ import (
 func (rt *_router) getConversations(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// autenticazione
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
-
+	userId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
 	// prende le conversazioni dal db
 	conversations, err := rt.db.GetConversations(userId)
 	if err != nil {

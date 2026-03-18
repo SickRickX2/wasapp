@@ -18,7 +18,7 @@ func (rt *_router) createConversation(w http.ResponseWriter, r *http.Request, ps
 	}
 	// parsa il token
 	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
+	if len(parts) != 2 || parts[0] != bearerPrefix {
 		http.Error(w, "Unauthorized: invalid token format", http.StatusUnauthorized)
 		return
 	}

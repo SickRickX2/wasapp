@@ -1,9 +1,13 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
+
+	appErrs "github.com/SickRickX2/wasapp/service/api/errs"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 	"github.com/julienschmidt/httprouter"
@@ -39,11 +43,12 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	// 4. Chiama il DB
 	err := rt.db.AddGroupMembers(convId, req.UserIds)
 	if err != nil {
-		if err.Error() == "cannot add members to a private conversation" {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		} else if strings.Contains(err.Error(), "no rows") { // Check veloce se conv non trovata
+		switch {
+		case errors.Is(err, appErrs.ErrCannotAddMembersToPrivate):
+			http.Error(w, "Cannot add members to a private conversation", http.StatusBadRequest)
+		case errors.Is(err, sql.ErrNoRows):
 			http.Error(w, "Conversation not found", http.StatusNotFound)
-		} else {
+		default:
 			rt.baseLogger.WithError(err).Error("Error adding members to group")
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}

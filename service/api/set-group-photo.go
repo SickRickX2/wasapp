@@ -12,18 +12,18 @@ import (
 func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	// DE-COMMENTATO: Ora ci serve sapere chi è l'utente!
-	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
+	// estrai userId dal token (simulato)
+	userId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
 
-	// 2. Parametri Path
+	// path params
 	vars := ps
 	convId := schemas.ConversationId(vars.ByName("convId"))
 
-	// 3. Controllo Permessi: L'utente fa parte del gruppo?
+	// controllo sicurezza
 	isInGroup, err := rt.db.IsUserInConversation(convId, userId)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error checking group membership")
@@ -31,7 +31,6 @@ func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps http
 		return
 	}
 	if !isInGroup {
-		// Se non è nel gruppo, 403 Forbidden!
 		http.Error(w, "Forbidden: You are not a participant of this group", http.StatusForbidden)
 		return
 	}
