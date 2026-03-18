@@ -11,14 +11,14 @@ import (
 )
 
 func (rt *_router) setUserPhoto(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Autenticazione
+	// autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 	requestingUserId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
-	// 2. Controllo Identità (Solo tu puoi cambiare la tua foto)
+	// controllo identità
 	vars := ps
 	targetUserId := schemas.UserId(vars.ByName("userId"))
 
@@ -27,7 +27,7 @@ func (rt *_router) setUserPhoto(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 
-	// 3. Parsing Body (ci aspettiamo {"mediaId": "media_..."})
+	// parsing Body
 	var req struct {
 		MediaId string `json:"mediaId"`
 	}
@@ -36,27 +36,28 @@ func (rt *_router) setUserPhoto(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 
-	// Validazione minima
+	// validazione minima
 	if req.MediaId == "" {
 		http.Error(w, "mediaId is required", http.StatusBadRequest)
 		return
 	}
 
-	// 4. Costruiamo l'URL (potremmo fare una query al DB per recuperarlo dalla tabella media,
-	// ma sappiamo che il formato è standard, quindi risparmiamo una query).
-	// ATTENZIONE: Assumiamo .jpg per semplicità, ma idealmente dovremmo leggere l'estensione dal DB media.
-	// Se vuoi essere preciso al 100%, dovresti fare GetMediaById nel DB.
-	// Per ora facciamo finta che siano tutte jpg o che il frontend gestisca l'URL.
-	photoUrl := "/images/" + req.MediaId + ".jpg"
+	photoUrl, err := rt.db.GetMediaUrl(req.MediaId)
+	if err != nil {
+		// Se c'è un errore (es. sql.ErrNoRows), significa che l'immagine non esiste
+		rt.baseLogger.WithError(err).Error("Media non trovato nel database")
+		http.Error(w, "Media not found", http.StatusNotFound)
+		return
+	}
 
-	// 5. Aggiorna User nel DB
-	err := rt.db.SetUserPhoto(targetUserId, photoUrl)
+	// aggiorna user nel db
+	err = rt.db.SetUserPhoto(targetUserId, photoUrl)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error setting user photo")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// 6. Successo
+	// successo
 	w.WriteHeader(http.StatusNoContent)
 }

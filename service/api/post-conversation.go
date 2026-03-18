@@ -55,5 +55,9 @@ func (rt *_router) createConversation(w http.ResponseWriter, r *http.Request, ps
 
 	// risponde con la conversazione
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(conversation)
+	w.WriteHeader(http.StatusCreated)
+
+	if err := json.NewEncoder(w).Encode(conversation); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in createConversation")
+	}
 }

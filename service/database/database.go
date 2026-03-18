@@ -57,6 +57,7 @@ type AppDatabase interface {
 	RemoveGroupMember(convId schemas.ConversationId, userId schemas.UserId) error
 	GetConversations(userId schemas.UserId) ([]schemas.Conversation, error)
 	SaveMedia(media schemas.Media, mediaId string) error
+	GetMediaUrl(mediaId string) (string, error)
 	SetUserPhoto(userId schemas.UserId, photoUrl string) error
 	SetGroupPhoto(convId schemas.ConversationId, photoUrl string) error
 	IsUserInConversation(convId schemas.ConversationId, userId schemas.UserId) (bool, error)

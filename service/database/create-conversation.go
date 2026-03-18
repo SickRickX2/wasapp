@@ -43,7 +43,11 @@ func (db *appdbimpl) CreateConversation(userA schemas.UserId, userB schemas.User
 	if err != nil {
 		return conv, err
 	}
-	defer tx.Rollback()
+
+	// fix per linter
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// crea la conversazione
 	_, err = tx.Exec(`INSERT INTO conversations (convId, kind, createdAt) VALUES (?, 'private', ?)`, newConvID, now)

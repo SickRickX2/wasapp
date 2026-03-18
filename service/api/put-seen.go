@@ -32,7 +32,7 @@ func (rt *_router) markAsSeen(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// 4. Chiama DB
+	// aggiorna il DB
 	err = rt.db.MarkAsSeen(convId, messageId, userId)
 	if err != nil {
 		if err.Error() == "message not found" {
@@ -44,9 +44,11 @@ func (rt *_router) markAsSeen(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// 5. Risposta
+	// risposta
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	// Rispondiamo con un JSON semplice come da esempio YAML (o empty se preferisci)
-	w.Write([]byte(`{"success": true}`))
+
+	if _, err := w.Write([]byte(`{"success": true}`)); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to write response in markAsSeen")
+	}
 }

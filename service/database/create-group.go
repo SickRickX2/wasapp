@@ -18,7 +18,9 @@ func (db *appdbimpl) CreateGroup(creator schemas.UserId, name string, participan
 	if err != nil {
 		return group, err
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	// crea il gruppo nella tabella conversations
 	const insertConv = `
@@ -41,7 +43,9 @@ func (db *appdbimpl) CreateGroup(creator schemas.UserId, name string, participan
 	if err != nil {
 		return group, err
 	}
-	defer stmt.Close()
+	defer func() {
+		_ = stmt.Close()
+	}()
 
 	// inserisce i partecipanti nella lista finale
 	finalParticipants := []schemas.UserId{}

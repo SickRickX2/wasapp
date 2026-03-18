@@ -7,7 +7,7 @@ import (
 func (db *appdbimpl) SearchUsers(query string) ([]schemas.User, error) {
 	var users []schemas.User
 
-	// Es: se query="Ric", cerchiamo "%Ric%"
+	// Es: se query="Ric", cerca "%Ric%"
 	searchQuery := "%" + query + "%"
 
 	const sqlQuery = `

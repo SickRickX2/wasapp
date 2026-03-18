@@ -21,18 +21,18 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	// 2. Parse Multipart Form (Max 10 MB)
-	const maxUploadSize = 10 << 20 // 10 MB
+	const maxUploadSize = 5 << 20 // 5 MB
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		http.Error(w, "File too big", http.StatusBadRequest)
+		// Lo YAML prevede il 413 se è troppo grande!
+		http.Error(w, `{"message": "File too big"}`, http.StatusRequestEntityTooLarge)
 		return
 	}
 
-	// 3. Leggi il file dal form (il campo deve chiamarsi "image")
-	file, fileHeader, err := r.FormFile("image")
+	// 3. Leggi il file dal form (Il campo DEVE chiamarsi "file", non "image")
+	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
-		http.Error(w, "Invalid file key (use 'image')", http.StatusBadRequest)
+		http.Error(w, `{"description": "Invalid file key (use 'file')"}`, http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
@@ -97,14 +97,20 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 
 	// 8. Rispondi col JSON (incluso l'ID che serve per mandare il messaggio!)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
 	response := struct {
-		MediaId schemas.MessageId `json:"mediaId"` // Riciclo MessageId o uso string
-		Url     string            `json:"url"`
+		MediaId string `json:"mediaId"` // Semplice stringa, niente MessageId impropri
+		Url     string `json:"url"`
 	}{
-		MediaId: mediaId, // Qui usiamo il tipo custom se vuoi, o string
+		MediaId: string(mediaId),
 		Url:     mediaObj.URL,
 	}
-	json.NewEncoder(w).Encode(response)
+
+	// ECCO IL FIX PER IL LINTER
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in uploadMedia")
+	}
 }
 
 // Helper ID (lo mettiamo qui o in un utils)
@@ -115,5 +121,5 @@ func generateMediaId() schemas.MessageId {
 	for i := range b {
 		b[i] = charSet[rand.Intn(len(charSet))]
 	}
-	return schemas.MessageId("media_" + string(b))
+	return schemas.MessageId("med_" + string(b))
 }

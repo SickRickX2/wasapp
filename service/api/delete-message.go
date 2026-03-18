@@ -39,5 +39,7 @@ func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps http
 
 	// tocca aggiornare la risposta
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(updatedMsg)
+	if err := json.NewEncoder(w).Encode(updatedMsg); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in deleteMessage")
+	}
 }

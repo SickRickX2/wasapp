@@ -11,7 +11,7 @@ import (
 
 // PUT /conversations/{convId}/messages/{messageId}/reaction
 func (rt *_router) setReaction(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Auth
+	// 1. Auth (Ricordati che in futuro potresti usare la costante bearerPrefix!)
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -22,8 +22,6 @@ func (rt *_router) setReaction(w http.ResponseWriter, r *http.Request, ps httpro
 	// 2. Path Params
 	vars := ps
 	messageId := schemas.MessageId(vars.ByName("messageId"))
-	// convId c'è nell'URL ma non ci serve strettamente per la query SQL diretta sul messaggio,
-	// ma potremmo usarlo per verificare che il messaggio appartenga a quella chat.
 
 	// 3. Body Parsing
 	var req struct {
@@ -33,13 +31,13 @@ func (rt *_router) setReaction(w http.ResponseWriter, r *http.Request, ps httpro
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	// Validazione Emoji (semplice check lunghezza)
-	if len(req.Emoji) == 0 {
-		http.Error(w, "Emoji is required", http.StatusBadRequest)
+	// Validazione Emoji (La Bibbia dice: minLength 1, maxLength 4)
+	if len(req.Emoji) < 1 || len(req.Emoji) > 4 {
+		http.Error(w, "Emoji length must be between 1 and 4", http.StatusBadRequest)
 		return
 	}
 
-	// 4. DB Call
+	// 4. DB Call (Aggiorna/Inserisci reazione)
 	err := rt.db.ReactToMessage(messageId, userId, req.Emoji)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error setting reaction")
@@ -47,13 +45,20 @@ func (rt *_router) setReaction(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	// 5. Risposta
-	// Lo YAML dice che dovremmo restituire il Messaggio aggiornato.
-	// Per brevità ritorniamo 200 OK con un JSON semplice o ricarichiamo il messaggio.
-	// Facciamo la versione semplice che dice "ok".
-	w.WriteHeader(http.StatusOK)
+	// 5. Recupera il messaggio aggiornato dal DB (Come richiesto da api.yaml)
+	updatedMsg, err := rt.db.GetMessage(messageId)
+	if err != nil {
+		rt.baseLogger.WithError(err).Error("Error retrieving updated message")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// 6. Risposta
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"status": "reaction set"}`))
+	// w.WriteHeader(http.StatusOK) // Opzionale: 200 è il default di Go se non metti nulla
+	if err := json.NewEncoder(w).Encode(updatedMsg); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in setReaction")
+	}
 }
 
 // DELETE /conversations/{convId}/messages/{messageId}/reaction
@@ -70,7 +75,7 @@ func (rt *_router) removeReaction(w http.ResponseWriter, r *http.Request, ps htt
 	vars := ps
 	messageId := schemas.MessageId(vars.ByName("messageId"))
 
-	// 3. DB Call
+	// 3. DB Call (Rimuove reazione)
 	err := rt.db.UnreactToMessage(messageId, userId)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error removing reaction")
@@ -78,8 +83,17 @@ func (rt *_router) removeReaction(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 
-	// 4. Risposta
-	w.WriteHeader(http.StatusOK)
+	// 4. Recupera il messaggio aggiornato dal DB (Come richiesto da api.yaml)
+	updatedMsg, err := rt.db.GetMessage(messageId)
+	if err != nil {
+		rt.baseLogger.WithError(err).Error("Error retrieving updated message")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// 5. Risposta
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"status": "reaction removed"}`))
+	if err := json.NewEncoder(w).Encode(updatedMsg); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in removeReaction")
+	}
 }
