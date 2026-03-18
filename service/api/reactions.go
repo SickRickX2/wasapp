@@ -10,7 +10,7 @@ import (
 )
 
 // PUT /conversations/{convId}/messages/{messageId}/reaction
-func (rt *_router) setReaction(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Auth (Ricordati che in futuro potresti usare la costante bearerPrefix!)
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -57,12 +57,12 @@ func (rt *_router) setReaction(w http.ResponseWriter, r *http.Request, ps httpro
 	w.Header().Set("Content-Type", "application/json")
 	// w.WriteHeader(http.StatusOK) // Opzionale: 200 è il default di Go se non metti nulla
 	if err := json.NewEncoder(w).Encode(updatedMsg); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode response in setReaction")
+		rt.baseLogger.WithError(err).Error("failed to encode response in commentMessage")
 	}
 }
 
 // DELETE /conversations/{convId}/messages/{messageId}/reaction
-func (rt *_router) removeReaction(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Auth
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -94,6 +94,6 @@ func (rt *_router) removeReaction(w http.ResponseWriter, r *http.Request, ps htt
 	// 5. Risposta
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(updatedMsg); err != nil {
-		rt.baseLogger.WithError(err).Error("failed to encode response in removeReaction")
+		rt.baseLogger.WithError(err).Error("failed to encode response in uncommentMessage")
 	}
 }

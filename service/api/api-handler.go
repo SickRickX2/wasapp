@@ -37,8 +37,8 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.PUT("/conversations/:convId/messages/:messageId/seen", rt.markAsSeen)
 
 	// --- reactions ---
-	rt.router.PUT("/conversations/:convId/messages/:messageId/reaction", rt.setReaction)
-	rt.router.DELETE("/conversations/:convId/messages/:messageId/reaction", rt.removeReaction)
+	rt.router.PUT("/conversations/:convId/messages/:messageId/reaction", rt.commentMessage)
+	rt.router.DELETE("/conversations/:convId/messages/:messageId/reaction", rt.uncommentMessage)
 
 	// --- media ---
 	rt.router.POST("/media", rt.uploadMedia)
