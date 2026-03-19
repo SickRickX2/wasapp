@@ -47,11 +47,17 @@ func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	group, ok := updatedGroup.(schemas.Group)
+	if !ok {
+		rt.baseLogger.Error("updated conversation is not a group in leaveGroup")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	// 5. Risposta 200 OK con JSON (E accontentiamo errcheck)
 	w.Header().Set("Content-Type", "application/json")
-	// w.WriteHeader(http.StatusOK) // Opzionale, 200 è il default
-	if err := json.NewEncoder(w).Encode(updatedGroup); err != nil {
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(group); err != nil {
 		rt.baseLogger.WithError(err).Error("failed to encode response in leaveGroup")
 	}
 }

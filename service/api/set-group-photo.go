@@ -2,7 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
@@ -35,22 +38,76 @@ func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps http
 		return
 	}
 
-	// 4. Parsing Body
-	var req struct {
-		MediaId string `json:"mediaId"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+	const maxUploadSize = 5 << 20 // 5MB
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		http.Error(w, "Invalid multipart form", http.StatusBadRequest)
 		return
 	}
 
-	if req.MediaId == "" {
-		http.Error(w, "mediaId is required", http.StatusBadRequest)
+	file, fileHeader, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Invalid file key (use 'file')", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	buff := make([]byte, 512)
+	if _, err := file.Read(buff); err != nil {
+		http.Error(w, "Error reading file", http.StatusInternalServerError)
+		return
+	}
+	mimeType := http.DetectContentType(buff)
+	if !strings.HasPrefix(mimeType, "image/") {
+		http.Error(w, "Only images are allowed", http.StatusBadRequest)
+		return
+	}
+	if _, err := file.Seek(0, 0); err != nil {
+		http.Error(w, "Error processing file", http.StatusInternalServerError)
 		return
 	}
 
-	// Costruiamo l'URL
-	photoUrl := "/images/" + req.MediaId + ".jpg"
+	mediaId := generateMediaId()
+	fileExt := filepath.Ext(fileHeader.Filename)
+	if fileExt == "" {
+		fileExt = ".jpg"
+	}
+	newFilename := string(mediaId) + fileExt
+	savePath := filepath.Join("images", newFilename)
+
+	if err := os.MkdirAll("images", 0o755); err != nil {
+		rt.baseLogger.WithError(err).Error("Error creating images directory")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	dst, err := os.Create(savePath)
+	if err != nil {
+		rt.baseLogger.WithError(err).Error("Error creating file on disk")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		rt.baseLogger.WithError(err).Error("Error saving file content")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	photoUrl := "/images/" + newFilename
+	mediaObj := schemas.Media{
+		URL:      photoUrl,
+		Filename: fileHeader.Filename,
+		MimeType: mimeType,
+		Size:     int(fileHeader.Size),
+	}
+
+	if err := rt.db.SaveMedia(mediaObj, string(mediaId)); err != nil {
+		rt.baseLogger.WithError(err).Error("Error saving media info to DB")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	// 5. Aggiorna DB
 	err = rt.db.SetGroupPhoto(convId, photoUrl)
@@ -60,5 +117,16 @@ func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps http
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	updatedConv, err := rt.db.GetConversation(convId)
+	if err != nil {
+		rt.baseLogger.WithError(err).Error("Error retrieving updated group")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(updatedConv); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in setGroupPhoto")
+	}
 }
