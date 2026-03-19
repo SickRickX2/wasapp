@@ -59,5 +59,14 @@ func (rt *_router) setUserPhoto(w http.ResponseWriter, r *http.Request, ps httpr
 	}
 
 	// successo
-	w.WriteHeader(http.StatusNoContent)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	resp := struct {
+		PfpURL string `json:"pfpUrl"`
+	}{
+		PfpURL: photoUrl,
+	}
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in setUserPhoto")
+	}
 }

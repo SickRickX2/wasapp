@@ -16,9 +16,18 @@ func (rt *_router) getConversations(w http.ResponseWriter, r *http.Request, ps h
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	userId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
+	requestingUserId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
+	targetUserId := schemas.UserId(ps.ByName("userId"))
+	if targetUserId == "" {
+		http.Error(w, "Invalid userId", http.StatusBadRequest)
+		return
+	}
+	if requestingUserId != targetUserId {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
 	// prende le conversazioni dal db
-	conversations, err := rt.db.GetConversations(userId)
+	conversations, err := rt.db.GetConversations(targetUserId)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error retrieving conversations")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
