@@ -10,10 +10,10 @@ import (
 func (db *appdbimpl) GetMessage(messageId schemas.MessageId) (schemas.Message, error) {
 	var msg schemas.Message
 	var mediaId sql.NullString
-	var replyToId sql.NullString // <--- Aggiunto
+	var replyToId sql.NullString
 
 	// Recuperiamo i dati essenziali
-	// MODIFICA QUI: Aggiunto replyToId alla query
+
 	const query = `
 		SELECT messageId, senderId, text, mediaId, replyToId, kind, sentAt
 		FROM messages
@@ -24,7 +24,7 @@ func (db *appdbimpl) GetMessage(messageId schemas.MessageId) (schemas.Message, e
 		&msg.Sender,
 		&msg.Text,
 		&mediaId,
-		&replyToId, // <--- Scan anche qui
+		&replyToId,
 		&msg.Kind,
 		&msg.Time,
 	)
@@ -40,7 +40,7 @@ func (db *appdbimpl) GetMessage(messageId schemas.MessageId) (schemas.Message, e
 		msg.MediaId = mediaId.String
 	}
 
-	// Se serve sapere a chi rispondeva
+	// se serve sapere a chi rispondeva
 	if replyToId.Valid {
 		val := schemas.MessageId(replyToId.String)
 		msg.ReplyToId = &val

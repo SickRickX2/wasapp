@@ -7,13 +7,11 @@ import (
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 )
 
-// GetConversation restituisce "any" perché può essere una PrivateConversation o un Group
 func (db *appdbimpl) GetConversation(convId schemas.ConversationId) (any, error) {
-	// 1. Variabili per raccogliere i dati dal DB
 	var kind string
 	var groupName sql.NullString
 	var groupPhoto sql.NullString
-	var createdAt sql.NullTime // Usiamo NullTime perché le private potrebbero non averlo nel DB
+	var createdAt sql.NullTime
 
 	const query = `
 		SELECT kind, groupName, groupPhoto, createdAt 
@@ -28,7 +26,7 @@ func (db *appdbimpl) GetConversation(convId schemas.ConversationId) (any, error)
 		return nil, err
 	}
 
-	// 2. Estrae la lista dei partecipanti
+	// recupera i partecipanti
 	const partQuery = `
 		SELECT userId 
 		FROM conversation_participants 
@@ -54,9 +52,9 @@ func (db *appdbimpl) GetConversation(convId schemas.ConversationId) (any, error)
 		return nil, err
 	}
 
-	// 3. IL BIVIO POLIMORFICO: Costruiamo la struct giusta!
+	// costruiamo la risposta in base alla conv
 	if kind == groupType {
-		// Restituiamo la struct Group (che HA il campo GroupPhoto!)
+		// group
 		group := schemas.Group{
 			ConvId:       convId,
 			Type:         "group",
@@ -75,7 +73,7 @@ func (db *appdbimpl) GetConversation(convId schemas.ConversationId) (any, error)
 		return group, nil
 
 	} else {
-		// Restituiamo la struct PrivateConversation
+		// private
 		privateChat := schemas.PrivateConversation{
 			ConvId:       convId,
 			Type:         "private",

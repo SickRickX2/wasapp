@@ -9,8 +9,7 @@ import (
 )
 
 func (db *appdbimpl) MarkAsSeen(convId schemas.ConversationId, messageId schemas.MessageId, readerId schemas.UserId) error {
-	// 1. Troviamo la data del messaggio target
-	// Serve per la logica "implicitly previous ones"
+	// troviamo la data del messaggio
 	var sentAt time.Time
 	err := db.c.QueryRow("SELECT sentAt FROM messages WHERE messageId = ? AND convId = ?", messageId, convId).Scan(&sentAt)
 	if err != nil {
@@ -24,7 +23,7 @@ func (db *appdbimpl) MarkAsSeen(convId schemas.ConversationId, messageId schemas
 	// - Messaggi in questa chat
 	// - Inviati PRIMA o NELLO STESSO MOMENTO del messaggio target
 	// - Che NON sono stati inviati dall'utente che sta leggendo (readerId)
-	// - Che non sono già 'seen' (per ottimizzare)
+	// - Che non sono già 'seen'
 	const updateQuery = `
 		UPDATE messages 
 		SET status = 'seen' 

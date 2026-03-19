@@ -20,8 +20,6 @@ func (db *appdbimpl) IsMessageInConversation(convId schemas.ConversationId, mess
 }
 
 func (db *appdbimpl) ReactToMessage(messageId schemas.MessageId, userId schemas.UserId, emoji string) error {
-	// INSERT OR REPLACE: Se la riga (messageId, userId) esiste già, sostituisce l'emoji.
-	// Se non esiste, la crea. Perfetto per la logica "una reazione per utente".
 	const query = `
 		INSERT OR REPLACE INTO message_reactions (messageId, userId, emoji)
 		VALUES (?, ?, ?)

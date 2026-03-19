@@ -9,7 +9,7 @@ import (
 
 func (db *appdbimpl) CreateMessage(convId schemas.ConversationId, msg schemas.Message) error {
 
-	// 1. Controllo se l'utente fa parte della conversazione
+	// controllo se l'utente fa parte della conversazione
 	const checkQuery = `SELECT 1 FROM conversation_participants WHERE convId = ? AND userId = ?`
 	var found int
 	err := db.c.QueryRow(checkQuery, convId, msg.Sender).Scan(&found)
@@ -17,7 +17,7 @@ func (db *appdbimpl) CreateMessage(convId schemas.ConversationId, msg schemas.Me
 		return errors.New("user not authorized to send message in this conversation")
 	}
 
-	// 2. Gestione Media
+	// gestione media
 	var mediaId sql.NullString
 	if msg.MediaId != "" {
 		mediaId.String = msg.MediaId
@@ -26,7 +26,7 @@ func (db *appdbimpl) CreateMessage(convId schemas.ConversationId, msg schemas.Me
 		mediaId.Valid = false
 	}
 
-	// 3. Gestione ReplyToId
+	// gestione ReplyToId
 	var replyToId sql.NullString
 	if msg.ReplyToId != nil && *msg.ReplyToId != "" {
 		replyToId.String = string(*msg.ReplyToId)
@@ -34,7 +34,7 @@ func (db *appdbimpl) CreateMessage(convId schemas.ConversationId, msg schemas.Me
 	}
 	var kind string = "normal"
 
-	// 4. Inserimento nel DB
+	// inserisce nel DB
 	const sqlQuery = `
 		INSERT INTO messages (messageId, convId, senderId, text, mediaId, replyToId, sentAt, kind, status)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

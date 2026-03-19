@@ -67,7 +67,7 @@ func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limi
 		}
 
 		if err := reacRows.Err(); err != nil {
-			reacRows.Close() // Chiudiamo il cursore per evitare memory leak
+			reacRows.Close()
 			return nil, err
 		}
 		reacRows.Close()
