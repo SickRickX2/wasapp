@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -8,21 +9,21 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-func (rt *_router) removeFromGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// autenticazione
+func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	// 1. Autenticazione (Estraiamo il VERO utente da qui!)
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	// QUESTO è il "me" di cui parla l'URL
+	myUserId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
 
-	// prende i parametri
-	vars := ps
-	convId := schemas.ConversationId(vars.ByName("convId"))
-	targetUserId := schemas.UserId(vars.ByName("userId"))
+	// 2. Prende convId dal path (userId non c'è più nell'URL!)
+	convId := schemas.ConversationId(ps.ByName("convId"))
 
-	//  rimuove il membro
-	err := rt.db.RemoveGroupMember(convId, targetUserId)
+	// 3. Rimuove il membro dal DB usando myUserId
+	err := rt.db.RemoveGroupMember(convId, myUserId)
 	if err != nil {
 		switch err.Error() {
 		case "conversation not found":
@@ -38,6 +39,19 @@ func (rt *_router) removeFromGroup(w http.ResponseWriter, r *http.Request, ps ht
 		return
 	}
 
-	// risposta
-	w.WriteHeader(http.StatusNoContent)
+	// 4. RECUPERA IL GRUPPO AGGIORNATO (Requisito YAML!)
+	// Nota: Assicurati di avere una funzione GetConversation o GetGroup nel DB
+	updatedGroup, err := rt.db.GetConversation(convId)
+	if err != nil {
+		rt.baseLogger.WithError(err).Error("Error fetching updated group")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// 5. Risposta 200 OK con JSON (E accontentiamo errcheck)
+	w.Header().Set("Content-Type", "application/json")
+	// w.WriteHeader(http.StatusOK) // Opzionale, 200 è il default
+	if err := json.NewEncoder(w).Encode(updatedGroup); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in leaveGroup")
+	}
 }

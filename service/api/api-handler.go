@@ -17,15 +17,17 @@ func (rt *_router) Handler() http.Handler {
 
 	// --- users ---
 	rt.router.GET("/users", rt.searchUsers)
+	rt.router.GET("/users/:userId/pfp", rt.getPhotoUrl)
 	rt.router.PUT("/users/:userId/username", rt.setUsername)
 	rt.router.PUT("/users/:userId/pfp", rt.setUserPhoto)
+	rt.router.DELETE("/users/:userId/pfp", rt.deleteMyPhoto)
 
 	// --- conversations ---
 	rt.router.GET("/conversations", rt.getConversations)
 	rt.router.POST("/conversations", rt.createConversation)
 	rt.router.POST("/groups", rt.createGroup)
 	rt.router.POST("/conversations/:convId/participants", rt.addToGroup)
-	rt.router.DELETE("/conversations/:convId/participants/:userId", rt.removeFromGroup)
+	rt.router.DELETE("/conversations/:convId/participants/me", rt.leaveGroup)
 	rt.router.PUT("/conversations/:convId/group_photo", rt.setGroupPhoto)
 	rt.router.PUT("/conversations/:convId/group_name", rt.setGroupName)
 
