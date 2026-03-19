@@ -64,6 +64,7 @@ type AppDatabase interface {
 	IsUserInConversation(convId schemas.ConversationId, userId schemas.UserId) (bool, error)
 	SetGroupName(convId schemas.ConversationId, newName string) error
 	GetMessage(messageId schemas.MessageId) (schemas.Message, error)
+	IsMessageInConversation(convId schemas.ConversationId, messageId schemas.MessageId) (bool, error)
 	MarkAsSeen(convId schemas.ConversationId, messageId schemas.MessageId, userId schemas.UserId) error
 	ReactToMessage(messageId schemas.MessageId, userId schemas.UserId, emoji string) error
 	UnreactToMessage(messageId schemas.MessageId, userId schemas.UserId) error

@@ -2,10 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
+	appDB "github.com/SickRickX2/wasapp/service/database"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -31,14 +33,21 @@ func (rt *_router) deleteMessage(w http.ResponseWriter, r *http.Request, ps http
 	// cancella dal db
 	updatedMsg, err := rt.db.DeleteMessage(convId, messageId, userId)
 	if err != nil {
-		// se non l'ha trovato o non è autorizzato  restituisce 404
-		rt.baseLogger.WithError(err).Error("Error deleting message")
-		http.Error(w, "Message not found or unauthorized", http.StatusNotFound)
+		switch {
+		case errors.Is(err, appDB.ErrMessageNotFound):
+			http.Error(w, "Message not found", http.StatusNotFound)
+		case errors.Is(err, appDB.ErrForbidden):
+			http.Error(w, "Bad request", http.StatusBadRequest)
+		default:
+			rt.baseLogger.WithError(err).Error("Error deleting message")
+			http.Error(w, "Bad request", http.StatusBadRequest)
+		}
 		return
 	}
 
-	// tocca aggiornare la risposta
+	// risposta 200 con messaggio aggiornato (come da YAML)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(updatedMsg); err != nil {
 		rt.baseLogger.WithError(err).Error("failed to encode response in deleteMessage")
 	}

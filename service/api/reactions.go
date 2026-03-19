@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 	"github.com/julienschmidt/httprouter"
@@ -11,19 +12,36 @@ import (
 
 // PUT /conversations/{convId}/messages/{messageId}/reaction
 func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Auth (Ricordati che in futuro potresti usare la costante bearerPrefix!)
+	// 1. Auth
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
+	userId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
 
 	// 2. Path Params
 	vars := ps
+	convId := schemas.ConversationId(vars.ByName("convId"))
 	messageId := schemas.MessageId(vars.ByName("messageId"))
+	if convId == "" || messageId == "" {
+		http.Error(w, "Invalid path parameters", http.StatusBadRequest)
+		return
+	}
 
-	// 3. Body Parsing
+	// 3. Sicurezza/consistenza: utente nella conversazione + messaggio nella conversazione
+	isInConversation, err := rt.db.IsUserInConversation(convId, userId)
+	if err != nil || !isInConversation {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	messageInConversation, err := rt.db.IsMessageInConversation(convId, messageId)
+	if err != nil || !messageInConversation {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	// 4. Body Parsing
 	var req struct {
 		Emoji string `json:"emoji"`
 	}
@@ -31,31 +49,29 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	// Validazione Emoji (La Bibbia dice: minLength 1, maxLength 4)
-	if len(req.Emoji) < 1 || len(req.Emoji) > 4 {
+	emojiLen := utf8.RuneCountInString(req.Emoji)
+	if emojiLen < 1 || emojiLen > 4 {
 		http.Error(w, "Emoji length must be between 1 and 4", http.StatusBadRequest)
 		return
 	}
 
-	// 4. DB Call (Aggiorna/Inserisci reazione)
-	err := rt.db.ReactToMessage(messageId, userId, req.Emoji)
+	// 5. DB Call (Aggiorna/Inserisci reazione)
+	err = rt.db.ReactToMessage(messageId, userId, req.Emoji)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("Error setting reaction")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
 
-	// 5. Recupera il messaggio aggiornato dal DB (Come richiesto da api.yaml)
+	// 6. Recupera il messaggio aggiornato dal DB
 	updatedMsg, err := rt.db.GetMessage(messageId)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("Error retrieving updated message")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
 
-	// 6. Risposta
+	// 7. Risposta
 	w.Header().Set("Content-Type", "application/json")
-	// w.WriteHeader(http.StatusOK) // Opzionale: 200 è il default di Go se non metti nulla
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(updatedMsg); err != nil {
 		rt.baseLogger.WithError(err).Error("failed to encode response in commentMessage")
 	}
@@ -65,34 +81,50 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 func (rt *_router) uncommentMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Auth
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
+	userId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
 
 	// 2. Path Params
 	vars := ps
+	convId := schemas.ConversationId(vars.ByName("convId"))
 	messageId := schemas.MessageId(vars.ByName("messageId"))
-
-	// 3. DB Call (Rimuove reazione)
-	err := rt.db.UnreactToMessage(messageId, userId)
-	if err != nil {
-		rt.baseLogger.WithError(err).Error("Error removing reaction")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	if convId == "" || messageId == "" {
+		http.Error(w, "Invalid path parameters", http.StatusBadRequest)
 		return
 	}
 
-	// 4. Recupera il messaggio aggiornato dal DB (Come richiesto da api.yaml)
+	// 3. Sicurezza/consistenza: utente nella conversazione + messaggio nella conversazione
+	isInConversation, err := rt.db.IsUserInConversation(convId, userId)
+	if err != nil || !isInConversation {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	messageInConversation, err := rt.db.IsMessageInConversation(convId, messageId)
+	if err != nil || !messageInConversation {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	// 4. DB Call (Rimuove reazione)
+	err = rt.db.UnreactToMessage(messageId, userId)
+	if err != nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	// 5. Recupera il messaggio aggiornato dal DB
 	updatedMsg, err := rt.db.GetMessage(messageId)
 	if err != nil {
-		rt.baseLogger.WithError(err).Error("Error retrieving updated message")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
 
-	// 5. Risposta
+	// 6. Risposta
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(updatedMsg); err != nil {
 		rt.baseLogger.WithError(err).Error("failed to encode response in uncommentMessage")
 	}
