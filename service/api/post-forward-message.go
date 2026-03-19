@@ -92,7 +92,12 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 	}
 
 	// risposta
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(forwardedMsg)
+
+	//
+	w.WriteHeader(http.StatusCreated)
+
+	if err := json.NewEncoder(w).Encode(forwardedMsg); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in forwardMessage")
+	}
 }

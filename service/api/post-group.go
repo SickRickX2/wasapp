@@ -17,7 +17,7 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
+	if len(parts) != 2 || parts[0] != bearerPrefix {
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
 		return
 	}
@@ -48,8 +48,11 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	//risposta
-	w.WriteHeader(http.StatusCreated)
+	// risposta
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(group)
+	w.WriteHeader(http.StatusCreated)
+
+	if err := json.NewEncoder(w).Encode(group); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in createGroup")
+	}
 }

@@ -28,6 +28,10 @@ func (db *appdbimpl) CreateMessage(convId schemas.ConversationId, msg schemas.Me
 
 	// 3. Gestione ReplyToId
 	var replyToId sql.NullString
+	if msg.ReplyToId != nil && *msg.ReplyToId != "" {
+		replyToId.String = string(*msg.ReplyToId)
+		replyToId.Valid = true
+	}
 	var kind string = "normal"
 
 	// 4. Inserimento nel DB

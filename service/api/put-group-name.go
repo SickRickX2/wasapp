@@ -12,12 +12,11 @@ import (
 func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
-
+	userId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
 	// 2. Parametri Path
 	vars := ps
 	convId := schemas.ConversationId(vars.ByName("convId"))

@@ -19,7 +19,7 @@ func (db *appdbimpl) RemoveGroupMember(convId schemas.ConversationId, userId sch
 		return err
 	}
 	if kind != "group" {
-		return errors.New("cannot remove members from a private conversation")
+		return ErrCannotLeavePrivate
 	}
 
 	// toglie l'utente

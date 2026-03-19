@@ -872,7 +872,7 @@ paths:
         Adds or updates the user's reaction to a message.
         If the user already reacted, the old reaction is replaced with the new emoji.
         This enforces a "one reaction per user" policy (like WhatsApp/Instagram).
-      operationId: setReaction
+      operationId: commentMessage
       requestBody:
         required: true
         content:
@@ -915,7 +915,7 @@ paths:
       tags: ["messages"]
       summary: Remove reaction
       description: Removes the user's reaction from the message (Un-react).
-      operationId: deleteReaction
+      operationId: uncommentMessage
       responses:
         '200':
           description: Reaction removed successfully. Returns the updated message.

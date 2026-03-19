@@ -18,7 +18,7 @@ func (rt *_router) createConversation(w http.ResponseWriter, r *http.Request, ps
 	}
 	// parsa il token
 	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
+	if len(parts) != 2 || parts[0] != bearerPrefix {
 		http.Error(w, "Unauthorized: invalid token format", http.StatusUnauthorized)
 		return
 	}
@@ -55,5 +55,9 @@ func (rt *_router) createConversation(w http.ResponseWriter, r *http.Request, ps
 
 	// risponde con la conversazione
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(conversation)
+	w.WriteHeader(http.StatusCreated)
+
+	if err := json.NewEncoder(w).Encode(conversation); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in createConversation")
+	}
 }

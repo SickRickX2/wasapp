@@ -14,7 +14,7 @@ func (db *appdbimpl) MarkAsSeen(convId schemas.ConversationId, messageId schemas
 	var sentAt time.Time
 	err := db.c.QueryRow("SELECT sentAt FROM messages WHERE messageId = ? AND convId = ?", messageId, convId).Scan(&sentAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return errors.New("message not found")
 		}
 		return err

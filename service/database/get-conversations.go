@@ -32,7 +32,7 @@ func (db *appdbimpl) GetConversations(userId schemas.UserId) ([]schemas.Conversa
 			return nil, err
 		}
 
-		if c.Type == "group" && groupName != nil {
+		if c.Type == groupType && groupName != nil {
 			c.GroupName = *groupName
 		}
 

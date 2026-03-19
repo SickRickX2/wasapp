@@ -1,7 +1,7 @@
 package database
 
 import (
-	"database/sql" // <--- Serve per gestire i NULL del database (sql.NullString)
+	"database/sql"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 )
@@ -9,7 +9,7 @@ import (
 func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limit int, beforeId string) ([]schemas.Message, error) {
 	var messages []schemas.Message
 
-	// 1. MODIFICA QUI: Aggiunto 'replyToId' alla SELECT
+	// costruisce la query base
 	query := `SELECT messageId, senderId, text, mediaId, replyToId, sentAt, kind, status FROM messages WHERE convId = ?`
 	args := []interface{}{convId}
 
@@ -32,9 +32,8 @@ func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limi
 	for rows.Next() {
 		var m schemas.Message
 		var mediaIdSql sql.NullString
-		var replyToIdSql sql.NullString // <--- Variabile per il reply
+		var replyToIdSql sql.NullString
 
-		// 2. MODIFICA QUI: Aggiunto &replyToIdSql allo Scan
 		if err := rows.Scan(&m.ID, &m.Sender, &m.Text, &mediaIdSql, &replyToIdSql, &m.Time, &m.Kind, &m.Status); err != nil {
 			return nil, err
 		}
@@ -44,13 +43,13 @@ func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limi
 			m.MediaId = mediaIdSql.String
 		}
 
-		// 3. MODIFICA QUI: Gestione ReplyToId
+		// se cè un reply lo copiamo nella struct
 		if replyToIdSql.Valid {
 			val := schemas.MessageId(replyToIdSql.String)
 			m.ReplyToId = &val
 		}
 
-		// --- LOGICA REAZIONI ---
+		// prende le reazioni per questo messaggio
 		reacRows, err := db.c.Query(`SELECT userId, emoji FROM message_reactions WHERE messageId = ?`, m.ID)
 		if err != nil {
 			return nil, err
@@ -65,6 +64,11 @@ func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limi
 				return nil, err
 			}
 			m.Reactions = append(m.Reactions, r)
+		}
+
+		if err := reacRows.Err(); err != nil {
+			reacRows.Close() // Chiudiamo il cursore per evitare memory leak
+			return nil, err
 		}
 		reacRows.Close()
 		// -----------------------

@@ -1,9 +1,13 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
+
+	appErrs "github.com/SickRickX2/wasapp/service/api/errs"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 	"github.com/julienschmidt/httprouter"
@@ -12,14 +16,30 @@ import (
 func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	requestingUserId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
 
 	// 2. Parametri Path (Solo ID Conversazione)
 	vars := ps
 	convId := schemas.ConversationId(vars.ByName("convId"))
+	if convId == "" {
+		http.Error(w, "Invalid convId", http.StatusBadRequest)
+		return
+	}
+
+	// 2-bis. Permessi: solo partecipanti possono aggiungere membri
+	isInConversation, err := rt.db.IsUserInConversation(convId, requestingUserId)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	if !isInConversation {
+		http.Error(w, "Conversation not found", http.StatusNotFound)
+		return
+	}
 
 	// 3. Parsing Body (Lista utenti)
 	var req struct {
@@ -35,23 +55,41 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		http.Error(w, "User list cannot be empty", http.StatusBadRequest)
 		return
 	}
+	if len(req.UserIds) > 20 {
+		http.Error(w, "Too many users", http.StatusBadRequest)
+		return
+	}
 
 	// 4. Chiama il DB
-	err := rt.db.AddGroupMembers(convId, req.UserIds)
+	err = rt.db.AddGroupMembers(convId, req.UserIds)
 	if err != nil {
-		if err.Error() == "cannot add members to a private conversation" {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		} else if strings.Contains(err.Error(), "no rows") { // Check veloce se conv non trovata
+		switch {
+		case errors.Is(err, appErrs.ErrCannotAddMembersToPrivate):
+			http.Error(w, "Cannot add members to a private conversation", http.StatusBadRequest)
+		case errors.Is(err, sql.ErrNoRows):
 			http.Error(w, "Conversation not found", http.StatusNotFound)
-		} else {
+		default:
 			rt.baseLogger.WithError(err).Error("Error adding members to group")
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			http.Error(w, "Bad request", http.StatusBadRequest)
 		}
 		return
 	}
 
-	// 5. Successo
-	w.WriteHeader(http.StatusOK) // O 200 OK come da tuo YAML
-	// Opzionale: restituire il gruppo aggiornato come promette lo YAML,
-	// ma per ora va bene anche solo status OK.
+	// 5. Successo: ritorna il gruppo aggiornato come da YAML
+	updatedConv, err := rt.db.GetConversation(convId)
+	if err != nil {
+		http.Error(w, "Conversation not found", http.StatusNotFound)
+		return
+	}
+	updatedGroup, ok := updatedConv.(schemas.Group)
+	if !ok {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(updatedGroup); err != nil {
+		rt.baseLogger.WithError(err).Error("failed to encode response in addToGroup")
+	}
 }

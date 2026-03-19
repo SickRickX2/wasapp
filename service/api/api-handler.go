@@ -4,6 +4,8 @@ import (
 	"net/http"
 )
 
+const bearerPrefix = "Bearer"
+
 // Handler returns an instance of httprouter.Router that handle APIs registered here
 func (rt *_router) Handler() http.Handler {
 	// --- Sessione ---
@@ -15,15 +17,18 @@ func (rt *_router) Handler() http.Handler {
 
 	// --- users ---
 	rt.router.GET("/users", rt.searchUsers)
+	rt.router.GET("/users/:userId/pfp", rt.getPhotoUrl)
 	rt.router.PUT("/users/:userId/username", rt.setUsername)
 	rt.router.PUT("/users/:userId/pfp", rt.setUserPhoto)
+	rt.router.DELETE("/users/:userId/pfp", rt.deleteMyPhoto)
 
 	// --- conversations ---
-	rt.router.GET("/conversations", rt.getConversations)
+	rt.router.GET("/users/:userId/conversations", rt.getConversations)
+	rt.router.GET("/conversations/:convId", rt.getConversation)
 	rt.router.POST("/conversations", rt.createConversation)
 	rt.router.POST("/groups", rt.createGroup)
 	rt.router.POST("/conversations/:convId/participants", rt.addToGroup)
-	rt.router.DELETE("/conversations/:convId/participants/:userId", rt.removeFromGroup)
+	rt.router.DELETE("/conversations/:convId/participants/me", rt.leaveGroup)
 	rt.router.PUT("/conversations/:convId/group_photo", rt.setGroupPhoto)
 	rt.router.PUT("/conversations/:convId/group_name", rt.setGroupName)
 
@@ -35,8 +40,8 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.PUT("/conversations/:convId/messages/:messageId/seen", rt.markAsSeen)
 
 	// --- reactions ---
-	rt.router.PUT("/conversations/:convId/messages/:messageId/reaction", rt.setReaction)
-	rt.router.DELETE("/conversations/:convId/messages/:messageId/reaction", rt.removeReaction)
+	rt.router.PUT("/conversations/:convId/messages/:messageId/reaction", rt.commentMessage)
+	rt.router.DELETE("/conversations/:convId/messages/:messageId/reaction", rt.uncommentMessage)
 
 	// --- media ---
 	rt.router.POST("/media", rt.uploadMedia)

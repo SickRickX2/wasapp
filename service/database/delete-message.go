@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"errors"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
@@ -8,6 +9,19 @@ import (
 
 func (db *appdbimpl) DeleteMessage(convId schemas.ConversationId, messageId schemas.MessageId, userId schemas.UserId) (schemas.Message, error) {
 	var msg schemas.Message
+	var senderId schemas.UserId
+
+	const checkQuery = `SELECT senderId FROM messages WHERE convId = ? AND messageId = ?`
+	err := db.c.QueryRow(checkQuery, convId, messageId).Scan(&senderId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return msg, ErrMessageNotFound
+		}
+		return msg, err
+	}
+	if senderId != userId {
+		return msg, ErrForbidden
+	}
 
 	//  trasforma il messaggio in uno cancellato
 	const updateQuery = `
@@ -28,7 +42,7 @@ func (db *appdbimpl) DeleteMessage(convId schemas.ConversationId, messageId sche
 		return msg, err
 	}
 	if rowsAffected == 0 {
-		return msg, errors.New("message not found or user not authorized")
+		return msg, ErrMessageNotFound
 	}
 
 	// recupera il messaggio aggiornato
