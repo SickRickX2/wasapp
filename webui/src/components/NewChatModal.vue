@@ -29,7 +29,7 @@ watch(searchQuery, (value) => {
       searchResults.value = Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : []
     } catch {
       searchResults.value = []
-      errorMessage.value = 'Errore durante la ricerca utenti.'
+      errorMessage.value = 'Error while searching users.'
     }
   }, 300)
 })
@@ -59,7 +59,7 @@ async function startPrivateChat(recipientId) {
       }
     }
   } catch {
-    errorMessage.value = 'Impossibile creare la chat privata.'
+    errorMessage.value = 'Unable to create private chat.'
   }
 }
 </script>
@@ -76,12 +76,12 @@ async function startPrivateChat(recipientId) {
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 id="newChatModalLabel" class="modal-title">Nuova chat</h5>
+          <h5 id="newChatModalLabel" class="modal-title">New chat</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @click="resetModalState" />
         </div>
 
         <div class="modal-body">
-          <input v-model="searchQuery" type="text" class="form-control mb-3" placeholder="Cerca utente..." />
+          <input v-model="searchQuery" type="text" class="form-control mb-3" placeholder="Search user..." />
 
           <div v-if="errorMessage" class="alert alert-danger py-2" role="alert">
             {{ errorMessage }}
@@ -98,7 +98,7 @@ async function startPrivateChat(recipientId) {
               {{ user.userName }}
             </li>
             <li v-if="searchQuery.trim().length > 0 && searchResults.length === 0" class="list-group-item text-muted">
-              Nessun risultato
+              No results
             </li>
           </ul>
         </div>

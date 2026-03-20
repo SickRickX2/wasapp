@@ -14,7 +14,7 @@ async function doLogin() {
 
   const name = username.value.trim()
   if (name.length < 3 || name.length > 16) {
-    errorMessage.value = 'Display Name deve essere tra 3 e 16 caratteri.'
+    errorMessage.value = 'User Name must be between 3 and 16 characters.'
     return
   }
 
@@ -31,12 +31,12 @@ async function doLogin() {
       return
     }
 
-    errorMessage.value = 'Risposta non valida dal server.'
+    errorMessage.value = 'Invalid response from server.'
   } catch (err) {
     if (err?.response?.status === 400) {
-      errorMessage.value = 'Display Name non valido. Controlla i vincoli richiesti.'
+      errorMessage.value = 'Invalid User Name. Check required constraints.'
     } else {
-      errorMessage.value = 'Errore durante il login. Riprova.'
+      errorMessage.value = 'Login failed. Please try again.'
     }
   } finally {
     isLoading.value = false
@@ -53,7 +53,7 @@ const httpStatusCreated = 201
         <div class="card shadow-sm border-0">
           <div class="card-body p-4">
             <h1 class="h4 mb-3 text-center">Login</h1>
-            <p class="text-muted text-center mb-4">Accedi a WASAText</p>
+            <p class="text-muted text-center mb-4">Sign in to WASAText</p>
 
             <div v-if="errorMessage" class="alert alert-danger" role="alert">
               {{ errorMessage }}
@@ -61,18 +61,18 @@ const httpStatusCreated = 201
 
             <form @submit.prevent="doLogin">
               <div class="mb-3">
-                <label class="form-label" for="displayName">Display Name</label>
+                <label class="form-label" for="displayName">Username</label>
                 <input
                   id="displayName"
                   v-model.trim="username"
                   type="text"
                   class="form-control"
-                  placeholder="Pippo"
+                  placeholder="John"
                   minlength="3"
                   maxlength="16"
                   required
                 />
-                <div class="form-text">Min 3, max 16 caratteri.</div>
+                <div class="form-text">Min 3, max 16 characters.</div>
               </div>
 
               <button class="btn btn-primary w-100" type="submit" :disabled="isLoading">

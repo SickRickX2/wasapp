@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import axios from '../services/axios'
 import { state } from '../services/state'
 import NewChatModal from '../components/NewChatModal.vue'
@@ -9,6 +9,12 @@ const currentMessages = ref([])
 const selectedConversationId = ref(null)
 const newMessageText = ref('')
 const userNameCache = ref({})
+const fileInput = ref(null)
+const isUploadingMedia = ref(false)
+const previewImageUrl = ref('')
+const selectedMediaFile = ref(null)
+const selectedMediaPreviewUrl = ref('')
+const messagesContainer = ref(null)
 
 const selectedConversation = computed(() => {
   return conversations.value.find((c) => c.convId === selectedConversationId.value) ?? null
@@ -17,6 +23,21 @@ const selectedConversation = computed(() => {
 const sortedMessages = computed(() => {
   return currentMessages.value.slice().reverse()
 })
+
+const scrollToBottom = async () => {
+  await nextTick()
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+}
+
+watch(
+  currentMessages,
+  () => {
+    scrollToBottom()
+  },
+  { deep: true }
+)
 
 function getUsernameFromId(userId) {
   if (!userId) return ''
@@ -102,17 +123,38 @@ function getChatTitle(conv) {
     if (otherUserName) {
       return otherUserName
     }
-    return otherUserId || 'Chat privata'
+    return otherUserId || 'Private chat'
   }
   return 'Chat'
 }
 
 function getSenderLabel(message) {
-  if (!message?.sender) return 'Utente'
+  if (!message?.sender) return 'User'
   if (message.sender === state.userId) return 'Me'
   const senderName = getUsernameFromId(message.sender)
   if (senderName) return senderName
   return message.sender
+}
+
+function getMediaUrl(rawUrl) {
+  if (!rawUrl) return ''
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+    return rawUrl
+  }
+
+  const baseUrl = (axios.defaults.baseURL || '').replace(/\/$/, '')
+  const path = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`
+  return `${baseUrl}${path}`
+}
+
+function openImagePreview(rawUrl) {
+  const resolvedUrl = getMediaUrl(rawUrl)
+  if (!resolvedUrl) return
+  previewImageUrl.value = resolvedUrl
+}
+
+function closeImagePreview() {
+  previewImageUrl.value = ''
 }
 
 async function loadConversations() {
@@ -130,28 +172,107 @@ async function loadMessages(conversationId) {
     currentMessages.value = data.messages
     const senderIds = new Set(data.messages.map((m) => m?.sender).filter(Boolean))
     await Promise.all(Array.from(senderIds).map((id) => resolveUsernameById(id)))
+    await scrollToBottom()
     return
   }
   currentMessages.value = Array.isArray(data) ? data : []
   const senderIds = new Set(currentMessages.value.map((m) => m?.sender).filter(Boolean))
   await Promise.all(Array.from(senderIds).map((id) => resolveUsernameById(id)))
+  await scrollToBottom()
 }
 
 async function selectConversation(id) {
+  clearSelectedMedia()
   selectedConversationId.value = id
   await loadMessages(id)
 }
 
+function triggerFileInput() {
+  fileInput.value?.click()
+}
+
+async function uploadAndSendMedia(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  if (!selectedConversationId.value) {
+    alert('Select a chat before sending media')
+    event.target.value = ''
+    return
+  }
+
+  if (selectedMediaPreviewUrl.value) {
+    URL.revokeObjectURL(selectedMediaPreviewUrl.value)
+  }
+
+  selectedMediaFile.value = file
+  selectedMediaPreviewUrl.value = URL.createObjectURL(file)
+  event.target.value = ''
+}
+
+function clearSelectedMedia() {
+  if (selectedMediaPreviewUrl.value) {
+    URL.revokeObjectURL(selectedMediaPreviewUrl.value)
+  }
+  selectedMediaPreviewUrl.value = ''
+  selectedMediaFile.value = null
+}
+
 async function sendMessage() {
   if (!selectedConversationId.value) return
-  if (newMessageText.value.trim().length === 0) return
+  const text = newMessageText.value.trim()
+  const hasMedia = !!selectedMediaFile.value
+  if (text.length === 0 && !hasMedia) return
 
-  await axios.post(`/conversations/${selectedConversationId.value}/messages`, {
-    text: newMessageText.value,
-  })
+  isUploadingMedia.value = true
+  try {
+    let mediaPayload = null
 
-  newMessageText.value = ''
-  await loadMessages(selectedConversationId.value)
+    if (selectedMediaFile.value) {
+      const formData = new FormData()
+      formData.append('file', selectedMediaFile.value)
+
+      const uploadResponse = await axios.post('/media', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+
+      const mediaUrl = uploadResponse.data?.url
+      if (!mediaUrl) {
+        alert('Error: media URL not received from server')
+        return
+      }
+
+      mediaPayload = {
+        url: mediaUrl,
+        filename: selectedMediaFile.value.name,
+        mimeType: selectedMediaFile.value.type,
+        size: selectedMediaFile.value.size,
+      }
+    }
+
+    const payload = {}
+    if (text.length > 0) {
+      payload.text = text
+    }
+    if (mediaPayload) {
+      payload.media = mediaPayload
+    }
+
+    await axios.post(`/conversations/${selectedConversationId.value}/messages`, payload)
+    newMessageText.value = ''
+    clearSelectedMedia()
+    await loadMessages(selectedConversationId.value)
+  } catch (err) {
+    if (err?.response?.status === 413) {
+      alert('File too large (max 5MB)')
+    } else if (err?.response?.status === 400) {
+      alert('Invalid message data')
+    } else {
+      alert('Error while sending message')
+    }
+  } finally {
+    isUploadingMedia.value = false
+  }
 }
 
 async function onChatCreated(convId) {
@@ -166,7 +287,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="d-flex h-100 overflow-hidden bg-white">
+  <div class="d-flex h-100 overflow-hidden bg-white" style="min-height: 0;">
     <aside class="d-flex flex-column h-100 border-end chat-sidebar">
       <div class="p-3 border-bottom d-flex align-items-center justify-content-between gap-2">
         <h2 class="h5 mb-0">Chat</h2>
@@ -176,7 +297,7 @@ onMounted(async () => {
           data-bs-toggle="modal"
           data-bs-target="#newChatModal"
         >
-          Nuova Chat
+          New Chat
         </button>
       </div>
 
@@ -197,19 +318,19 @@ onMounted(async () => {
       </div>
     </aside>
 
-    <section class="d-flex flex-column h-100 flex-grow-1 min-w-0">
+    <section class="d-flex flex-column h-100 min-w-0 flex-grow-1" style="min-height: 0;">
       <template v-if="!selectedConversationId">
         <div class="d-flex flex-grow-1 align-items-center justify-content-center text-muted">
-          Seleziona una chat per iniziare
+          Select a chat to start
         </div>
       </template>
 
       <template v-else>
-        <header class="border-bottom p-3 bg-white">
+        <header class="border-bottom p-3 bg-white flex-shrink-0">
           <h3 class="h6 mb-0">{{ getChatTitle(selectedConversation) }}</h3>
         </header>
 
-        <div class="flex-grow-1 overflow-y-auto p-3 bg-light">
+        <div ref="messagesContainer" class="flex-grow-1 overflow-y-auto p-3" style="min-height: 0;">
           <div
             v-for="(message, index) in sortedMessages"
             :key="message.messageId || index"
@@ -221,34 +342,56 @@ onMounted(async () => {
               :class="message.sender === state.userId ? 'bg-primary text-white' : 'bg-white border'"
             >
               <div class="small mb-1 opacity-75">{{ getSenderLabel(message) }}</div>
-              <div>{{ message.text || 'Messaggio multimediale' }}</div>
+              <div v-if="message.text">{{ message.text }}</div>
               <img
                 v-if="message.media?.url"
-                :src="message.media.url"
+                :src="getMediaUrl(message.media.url)"
                 alt="media"
-                class="img-fluid rounded mt-2"
+                class="img-fluid rounded mt-2 media-thumb"
                 style="max-height: 220px"
+                role="button"
+                @click="openImagePreview(message.media.url)"
               />
             </div>
           </div>
         </div>
 
-        <div class="mt-auto border-top p-3 bg-white">
-          <div class="d-flex">
-            <input
-              v-model="newMessageText"
-              type="text"
-              class="form-control me-2"
-              placeholder="Scrivi un messaggio..."
-              @keyup.enter="sendMessage"
+        <div class="p-3 bg-light border-top mt-auto flex-shrink-0">
+          <div class="input-group">
+            <button class="btn btn-outline-secondary d-flex align-items-center" type="button" @click="triggerFileInput">
+              <span class="material-symbols-outlined">add_photo_alternate</span>
+            </button>
+            <input type="text" class="form-control" placeholder="Type a message..." v-model="newMessageText" @keyup.enter="sendMessage">
+            <button class="btn btn-primary" type="button" @click="sendMessage">Send</button>
+          </div>
+          <input
+            ref="fileInput"
+            type="file"
+            class="d-none"
+            accept="image/*"
+            @change="uploadAndSendMedia"
+          />
+
+          <div v-if="selectedMediaFile" class="mt-2 d-inline-flex align-items-center gap-2 border rounded p-2 bg-white">
+            <img
+              :src="selectedMediaPreviewUrl"
+              alt="Attachment preview"
+              class="rounded"
+              style="width: 44px; height: 44px; object-fit: cover"
             />
-            <button class="btn btn-primary" @click="sendMessage">Invia</button>
+            <small class="text-muted text-truncate" style="max-width: 220px">{{ selectedMediaFile.name }}</small>
+            <button type="button" class="btn btn-sm btn-outline-danger" @click="clearSelectedMedia">✕</button>
           </div>
         </div>
       </template>
     </section>
 
     <NewChatModal @chatCreated="onChatCreated" />
+
+    <div v-if="previewImageUrl" class="image-preview-overlay" @click="closeImagePreview">
+      <button class="btn btn-light image-preview-close" type="button" @click.stop="closeImagePreview">✕</button>
+      <img :src="previewImageUrl" alt="Image preview" class="image-preview-full" @click.stop />
+    </div>
   </div>
 </template>
 
@@ -262,5 +405,41 @@ onMounted(async () => {
 .message-bubble {
   max-width: 75%;
   word-break: break-word;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-size: 24px;
+  vertical-align: middle;
+}
+
+.media-thumb {
+  cursor: zoom-in;
+}
+
+.image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.image-preview-full {
+  max-width: 95vw;
+  max-height: 92vh;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
+}
+
+.image-preview-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2001;
 }
 </style>

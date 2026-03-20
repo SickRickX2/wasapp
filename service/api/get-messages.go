@@ -50,6 +50,19 @@ func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
+	for i := range msgs {
+		if msgs[i].MediaId == "" {
+			continue
+		}
+
+		url, err := rt.db.GetMediaUrl(msgs[i].MediaId)
+		if err != nil {
+			continue
+		}
+
+		msgs[i].Media = &schemas.Media{URL: url}
+	}
+
 	// risposta
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(msgs); err != nil {
