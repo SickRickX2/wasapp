@@ -5,6 +5,16 @@ import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 import App from './App.vue'
 import router from './router'
 import axios from './services/axios'
+import { state } from './services/state'
+
+const storedUserId = localStorage.getItem('userId')
+const storedUserName = localStorage.getItem('userName')
+if (storedUserId) {
+	state.userId = storedUserId
+}
+if (storedUserName) {
+	state.userName = storedUserName
+}
 
 const app = createApp(App)
 

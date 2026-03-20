@@ -17,6 +17,7 @@ func (rt *_router) Handler() http.Handler {
 
 	// --- users ---
 	rt.router.GET("/users", rt.searchUsers)
+	rt.router.GET("/users/:userId", rt.getUserById)
 	rt.router.GET("/users/:userId/pfp", rt.getPhotoUrl)
 	rt.router.PUT("/users/:userId/username", rt.setUsername)
 	rt.router.PUT("/users/:userId/pfp", rt.setUserPhoto)

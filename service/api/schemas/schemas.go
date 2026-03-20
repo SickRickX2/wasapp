@@ -63,13 +63,14 @@ type Message struct {
 // /schemas/Conversation
 
 type Conversation struct {
-	ConvId       ConversationId `json:"convId"`
-	Type         string         `json:"type"`
-	GroupName    string         `json:"groupName,omitempty"`
-	CreatedAt    time.Time      `json:"createdAt,omitempty"`
-	UnreadCount  int            `json:"unreadCount"`
-	LastMessage  *Message       `json:"lastMessage,omitempty"`
-	Participants []UserId       `json:"participants"`
+	ConvId           ConversationId `json:"convId"`
+	Type             string         `json:"type"`
+	GroupName        string         `json:"groupName,omitempty"`
+	ParticipantNames []string       `json:"participantNames,omitempty"`
+	CreatedAt        time.Time      `json:"createdAt,omitempty"`
+	UnreadCount      int            `json:"unreadCount"`
+	LastMessage      *Message       `json:"lastMessage,omitempty"`
+	Participants     []UserId       `json:"participants"`
 }
 
 type PrivateConversation struct {

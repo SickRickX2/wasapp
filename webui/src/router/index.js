@@ -6,8 +6,8 @@ import { state } from '../services/state'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', name: 'home', component: HomeView },
-    { path: '/login', name: 'login', component: LoginView },
+    { path: '/', name: 'Home', component: HomeView },
+    { path: '/login', name: 'Login', component: LoginView },
   ],
 })
 

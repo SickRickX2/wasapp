@@ -36,6 +36,40 @@ func (db *appdbimpl) GetConversations(userId schemas.UserId) ([]schemas.Conversa
 			c.GroupName = *groupName
 		}
 
+		const participantsQuery = `
+			SELECT cp.userId, COALESCE(u.userName, '')
+			FROM conversation_participants cp
+			LEFT JOIN users u ON u.userId = cp.userId
+			WHERE cp.convId = ?
+		`
+		participantRows, err := db.c.Query(participantsQuery, c.ConvId)
+		if err != nil {
+			return nil, err
+		}
+
+		participants := make([]schemas.UserId, 0)
+		participantNames := make([]string, 0)
+		for participantRows.Next() {
+			var participantId schemas.UserId
+			var participantName string
+			if err := participantRows.Scan(&participantId, &participantName); err != nil {
+				_ = participantRows.Close()
+				return nil, err
+			}
+			participants = append(participants, participantId)
+			participantNames = append(participantNames, participantName)
+		}
+		if err := participantRows.Err(); err != nil {
+			_ = participantRows.Close()
+			return nil, err
+		}
+		if err := participantRows.Close(); err != nil {
+			return nil, err
+		}
+
+		c.Participants = participants
+		c.ParticipantNames = participantNames
+
 		// TODO: prendere l'ultimo messaggio e contare i mesaggi non letti
 		convs = append(convs, c)
 	}
