@@ -1,8 +1,9 @@
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import axios from '../services/axios'
 import { state } from '../services/state'
 import NewChatModal from '../components/NewChatModal.vue'
+import UserAvatar from '../components/UserAvatar.vue'
 
 const conversations = ref([])
 const currentMessages = ref([])
@@ -15,6 +16,7 @@ const previewImageUrl = ref('')
 const selectedMediaFile = ref(null)
 const selectedMediaPreviewUrl = ref('')
 const messagesContainer = ref(null)
+let pollingInterval = null
 
 const selectedConversation = computed(() => {
   return conversations.value.find((c) => c.convId === selectedConversationId.value) ?? null
@@ -158,27 +160,42 @@ function closeImagePreview() {
 }
 
 async function loadConversations() {
-  if (!state.userId) return
-  const response = await axios.get(`/users/${state.userId}/conversations`)
-  const data = response.data
-  conversations.value = Array.isArray(data?.conversations) ? data.conversations : []
-  await enrichConversationNames()
+  try {
+    if (!state.userId) return
+    const response = await axios.get(`/users/${state.userId}/conversations`)
+    const data = response.data
+    conversations.value = Array.isArray(data?.conversations) ? data.conversations : []
+    await enrichConversationNames()
+  } catch (err) {
+    console.error('Failed to load conversations', err)
+  }
 }
 
 async function loadMessages(conversationId) {
-  const response = await axios.get(`/conversations/${conversationId}/messages`)
-  const data = response.data
-  if (Array.isArray(data?.messages)) {
-    currentMessages.value = data.messages
-    const senderIds = new Set(data.messages.map((m) => m?.sender).filter(Boolean))
+  try {
+    const response = await axios.get(`/conversations/${conversationId}/messages`)
+    const data = response.data
+    if (Array.isArray(data?.messages)) {
+      currentMessages.value = data.messages
+      const senderIds = new Set(data.messages.map((m) => m?.sender).filter(Boolean))
+      await Promise.all(Array.from(senderIds).map((id) => resolveUsernameById(id)))
+      await scrollToBottom()
+      return
+    }
+    currentMessages.value = Array.isArray(data) ? data : []
+    const senderIds = new Set(currentMessages.value.map((m) => m?.sender).filter(Boolean))
     await Promise.all(Array.from(senderIds).map((id) => resolveUsernameById(id)))
     await scrollToBottom()
-    return
+  } catch (err) {
+    console.error('Failed to load messages', err)
   }
-  currentMessages.value = Array.isArray(data) ? data : []
-  const senderIds = new Set(currentMessages.value.map((m) => m?.sender).filter(Boolean))
-  await Promise.all(Array.from(senderIds).map((id) => resolveUsernameById(id)))
-  await scrollToBottom()
+}
+
+async function syncData() {
+  await loadConversations()
+  if (selectedConversationId.value) {
+    await loadMessages(selectedConversationId.value)
+  }
 }
 
 async function selectConversation(id) {
@@ -283,6 +300,11 @@ async function onChatCreated(convId) {
 
 onMounted(async () => {
   await loadConversations()
+  pollingInterval = setInterval(syncData, 3000)
+})
+
+onUnmounted(() => {
+  if (pollingInterval) clearInterval(pollingInterval)
 })
 </script>
 
@@ -306,14 +328,23 @@ onMounted(async () => {
           v-for="conversation in conversations"
           :key="conversation.convId"
           type="button"
-          class="list-group-item list-group-item-action"
+          class="list-group-item list-group-item-action d-flex align-items-center gap-3"
           :class="{ active: selectedConversationId === conversation.convId }"
           @click="selectConversation(conversation.convId)"
         >
-          <div class="fw-semibold text-truncate">{{ getChatTitle(conversation) }}</div>
-          <small class="text-muted" :class="{ 'text-white-50': selectedConversationId === conversation.convId }">
-            {{ conversation.type }}
-          </small>
+          <UserAvatar 
+            :name="conversation.type === 'group' ? conversation.groupName || 'Group' : conversation.participants?.find(pid => pid !== state.userId) || 'user'" 
+            :displayName="conversation.type === 'group' ? conversation.groupName || 'Group' : getUsernameFromId(conversation.participants?.find(pid => pid !== state.userId))"
+            :size="40"
+            :realImageUrl="null"
+            class="flex-shrink-0"
+          />
+          <div class="flex-grow-1 min-w-0">
+            <div class="fw-semibold text-truncate">{{ getChatTitle(conversation) }}</div>
+            <small class="text-muted" :class="{ 'text-white-50': selectedConversationId === conversation.convId }">
+              {{ conversation.type }}
+            </small>
+          </div>
         </button>
       </div>
     </aside>
@@ -326,7 +357,13 @@ onMounted(async () => {
       </template>
 
       <template v-else>
-        <header class="border-bottom p-3 bg-white flex-shrink-0">
+        <header class="border-bottom p-3 bg-white flex-shrink-0 d-flex align-items-center gap-3">
+          <UserAvatar 
+            :name="selectedConversation?.type === 'group' ? selectedConversation?.groupName || 'Group' : selectedConversation?.participants?.find(pid => pid !== state.userId) || 'user'" 
+            :displayName="selectedConversation?.type === 'group' ? selectedConversation?.groupName || 'Group' : getUsernameFromId(selectedConversation?.participants?.find(pid => pid !== state.userId))"
+            :size="40"
+            :realImageUrl="null"
+          />
           <h3 class="h6 mb-0">{{ getChatTitle(selectedConversation) }}</h3>
         </header>
 
