@@ -1,6 +1,8 @@
 package database
 
 import (
+	"database/sql"
+
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 )
 
@@ -10,7 +12,7 @@ func (db *appdbimpl) GetConversations(userId schemas.UserId) ([]schemas.Conversa
 
 	// prende tutte le conversazioni in cui partecipa
 	const query = `
-		SELECT c.convId, c.kind, c.groupName, c.createdAt
+		SELECT c.convId, c.kind, c.groupName, c.groupPhoto, c.createdAt
 		FROM conversations c
 		JOIN conversation_participants cp ON c.convId = cp.convId
 		WHERE cp.userId = ?
@@ -25,15 +27,21 @@ func (db *appdbimpl) GetConversations(userId schemas.UserId) ([]schemas.Conversa
 
 	for rows.Next() {
 		var c schemas.Conversation
-		var groupName *string
+		var groupName sql.NullString
+		var groupPhoto sql.NullString
 
-		err := rows.Scan(&c.ConvId, &c.Type, &groupName, &c.CreatedAt)
+		err := rows.Scan(&c.ConvId, &c.Type, &groupName, &groupPhoto, &c.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
 
-		if c.Type == groupType && groupName != nil {
-			c.GroupName = *groupName
+		if c.Type == groupType {
+			if groupName.Valid {
+				c.GroupName = groupName.String
+			}
+			if groupPhoto.Valid {
+				c.GroupPhoto = groupPhoto.String
+			}
 		}
 
 		const participantsQuery = `

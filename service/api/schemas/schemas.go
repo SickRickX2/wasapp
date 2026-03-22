@@ -66,6 +66,7 @@ type Conversation struct {
 	ConvId           ConversationId `json:"convId"`
 	Type             string         `json:"type"`
 	GroupName        string         `json:"groupName,omitempty"`
+	GroupPhoto       string         `json:"groupPhoto,omitempty"`
 	ParticipantNames []string       `json:"participantNames,omitempty"`
 	CreatedAt        time.Time      `json:"createdAt,omitempty"`
 	UnreadCount      int            `json:"unreadCount"`

@@ -123,6 +123,12 @@ async function removeProfilePicture() {
           <aside class="col-12 col-md-3 col-lg-2 bg-white border-end h-100 p-3">
             <div class="list-group list-group-flush">
               <RouterLink to="/" class="list-group-item list-group-item-action">Home</RouterLink>
+              <button type="button" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#newChatModal">
+                <span class="material-symbols-outlined align-middle me-2" style="font-size: 20px;">chat</span> Nuova Chat
+              </button>
+              <button type="button" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#newGroupModal">
+                <span class="material-symbols-outlined align-middle me-2" style="font-size: 20px;">group_add</span> Nuovo Gruppo
+              </button>
             </div>
           </aside>
 

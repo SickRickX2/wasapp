@@ -1,8 +1,9 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import axios from '../services/axios'
 import { state } from '../services/state'
 import NewChatModal from '../components/NewChatModal.vue'
+import NewGroupModal from '../components/NewGroupModal.vue'
 import UserAvatar from '../components/UserAvatar.vue'
 
 const conversations = ref([])
@@ -10,6 +11,7 @@ const currentMessages = ref([])
 const selectedConversationId = ref(null)
 const newMessageText = ref('')
 const userNameCache = ref({})
+const userPfpCache = reactive({})
 const fileInput = ref(null)
 const isUploadingMedia = ref(false)
 const previewImageUrl = ref('')
@@ -40,6 +42,18 @@ watch(
   },
   { deep: true }
 )
+
+const getOtherParticipantId = (conv) => conv?.participants?.find((id) => id !== state.userId)
+
+function getConversationAvatarUrl(conv) {
+  if (!conv) return null
+  if (conv.type === 'group') {
+    return conv.groupPhoto ? getMediaUrl(conv.groupPhoto) : null
+  }
+
+  const otherId = getOtherParticipantId(conv)
+  return otherId ? userPfpCache[otherId] ?? null : null
+}
 
 function getUsernameFromId(userId) {
   if (!userId) return ''
@@ -165,9 +179,34 @@ async function loadConversations() {
     const response = await axios.get(`/users/${state.userId}/conversations`)
     const data = response.data
     conversations.value = Array.isArray(data?.conversations) ? data.conversations : []
+    loadParticipantPfps(conversations.value)
     await enrichConversationNames()
   } catch (err) {
     console.error('Failed to load conversations', err)
+  }
+}
+
+async function loadParticipantPfps(conversationsList) {
+  for (const conv of conversationsList) {
+    if (conv?.type !== 'private') continue
+
+    const otherId = getOtherParticipantId(conv)
+    if (!otherId) continue
+
+    if (userPfpCache[otherId] !== undefined) continue
+
+    userPfpCache[otherId] = null
+    try {
+      const response = await axios.get(`/users/${otherId}/pfp`)
+      const pfpUrl = response.data?.pfpUrl
+      userPfpCache[otherId] = pfpUrl ? getMediaUrl(pfpUrl) : null
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        userPfpCache[otherId] = null
+      } else {
+        console.error(`Failed to load profile picture for user ${otherId}`, error)
+      }
+    }
   }
 }
 
@@ -298,6 +337,12 @@ async function onChatCreated(convId) {
   await loadMessages(convId)
 }
 
+async function onGroupCreated(convId) {
+  await loadConversations()
+  selectedConversationId.value = convId
+  await loadMessages(convId)
+}
+
 onMounted(async () => {
   await loadConversations()
   pollingInterval = setInterval(syncData, 3000)
@@ -311,16 +356,8 @@ onUnmounted(() => {
 <template>
   <div class="d-flex h-100 overflow-hidden bg-white" style="min-height: 0;">
     <aside class="d-flex flex-column h-100 border-end chat-sidebar">
-      <div class="p-3 border-bottom d-flex align-items-center justify-content-between gap-2">
+      <div class="p-3 border-bottom d-flex align-items-center">
         <h2 class="h5 mb-0">Chat</h2>
-        <button
-          class="btn btn-sm btn-primary"
-          type="button"
-          data-bs-toggle="modal"
-          data-bs-target="#newChatModal"
-        >
-          New Chat
-        </button>
       </div>
 
       <div class="list-group list-group-flush overflow-y-auto flex-grow-1">
@@ -333,10 +370,10 @@ onUnmounted(() => {
           @click="selectConversation(conversation.convId)"
         >
           <UserAvatar 
-            :name="conversation.type === 'group' ? conversation.groupName || 'Group' : conversation.participants?.find(pid => pid !== state.userId) || 'user'" 
+            :name="conversation.type === 'group' ? getChatTitle(conversation) : getOtherParticipantId(conversation) || 'user'" 
             :displayName="conversation.type === 'group' ? conversation.groupName || 'Group' : getUsernameFromId(conversation.participants?.find(pid => pid !== state.userId))"
             :size="40"
-            :realImageUrl="null"
+            :realImageUrl="getConversationAvatarUrl(conversation)"
             class="flex-shrink-0"
           />
           <div class="flex-grow-1 min-w-0">
@@ -359,10 +396,10 @@ onUnmounted(() => {
       <template v-else>
         <header class="border-bottom p-3 bg-white flex-shrink-0 d-flex align-items-center gap-3">
           <UserAvatar 
-            :name="selectedConversation?.type === 'group' ? selectedConversation?.groupName || 'Group' : selectedConversation?.participants?.find(pid => pid !== state.userId) || 'user'" 
+            :name="selectedConversation?.type === 'group' ? getChatTitle(selectedConversation) : getOtherParticipantId(selectedConversation) || 'user'" 
             :displayName="selectedConversation?.type === 'group' ? selectedConversation?.groupName || 'Group' : getUsernameFromId(selectedConversation?.participants?.find(pid => pid !== state.userId))"
             :size="40"
-            :realImageUrl="null"
+            :realImageUrl="getConversationAvatarUrl(selectedConversation)"
           />
           <h3 class="h6 mb-0">{{ getChatTitle(selectedConversation) }}</h3>
         </header>
@@ -424,6 +461,7 @@ onUnmounted(() => {
     </section>
 
     <NewChatModal @chatCreated="onChatCreated" />
+    <NewGroupModal @groupCreated="onGroupCreated" />
 
     <div v-if="previewImageUrl" class="image-preview-overlay" @click="closeImagePreview">
       <button class="btn btn-light image-preview-close" type="button" @click.stop="closeImagePreview">✕</button>
