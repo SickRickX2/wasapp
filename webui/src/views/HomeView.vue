@@ -48,15 +48,6 @@ function formatMessageTime(dateLike) {
   return `${hours}:${minutes}`
 }
 
-function getMessageBodyText(message) {
-  if (!message) return ''
-  if (message.status === 'deleted') {
-    const deletedText = message.text || 'This message has been deleted'
-    return `"${deletedText.replace(/^"|"$/g, '')}"`
-  }
-  return message.text || ''
-}
-
 function renderSystemMessage(message) {
   if (!message) return ''
 
@@ -748,21 +739,34 @@ onUnmounted(() => {
               :class="item.message.sender === state.userId ? 'justify-content-end' : 'justify-content-start'"
             >
               <div
-                class="px-3 py-2 rounded-3 message-bubble"
-                :class="item.message.sender === state.userId ? 'bg-primary text-white' : 'bg-white border'"
+                class="p-2 rounded text-break shadow-sm message-bubble"
+                :class="{
+                  'bg-primary text-white': item.message.sender === state.userId && item.message.status !== 'deleted',
+                  'bg-white text-dark': item.message.sender !== state.userId && item.message.status !== 'deleted',
+                  'bg-light fst-italic': item.message.status === 'deleted'
+                }"
+                :style="item.message.status === 'deleted' ? 'border: 2px dashed #adb5bd;' : ''"
               >
-                <div class="small mb-1 opacity-75">{{ getSenderLabel(item.message) }}</div>
-                <div v-if="item.message.text">{{ getMessageBodyText(item.message) }}</div>
-                <img
-                  v-if="item.message.media?.url"
-                  :src="getMediaUrl(item.message.media.url)"
-                  alt="media"
-                  class="img-fluid rounded mt-2 media-thumb"
-                  style="max-height: 220px"
-                  role="button"
-                  @click="openImagePreview(item.message.media.url)"
-                />
-                <div class="d-flex align-items-center justify-content-between mt-1 gap-2">
+                <div v-if="item.message.status !== 'deleted'">
+                  <div class="small mb-1 opacity-75">{{ getSenderLabel(item.message) }}</div>
+                  <div v-if="item.message.text">{{ item.message.text }}</div>
+                  <img
+                    v-if="item.message.media?.url"
+                    :src="getMediaUrl(item.message.media.url)"
+                    alt="media"
+                    class="img-fluid rounded mt-2 media-thumb"
+                    style="max-height: 220px"
+                    role="button"
+                    @click="openImagePreview(item.message.media.url)"
+                  />
+                </div>
+
+                <div v-else class="d-flex align-items-center gap-2 deleted-message-label">
+                  <span class="material-symbols-outlined" style="font-size: 16px;">block</span>
+                  Questo messaggio è stato eliminato
+                </div>
+
+                <div v-if="item.message.status !== 'deleted'" class="d-flex align-items-center justify-content-between mt-1 gap-2">
                   <div
                     class="small"
                     :class="item.message.sender === state.userId ? 'text-white-50' : 'text-muted'"
@@ -777,13 +781,15 @@ onUnmounted(() => {
                       class="btn btn-sm btn-link p-0 border-0"
                       :class="item.message.sender === state.userId ? 'text-white-50' : 'text-muted'"
                       type="button"
+                      data-bs-toggle="dropdown"
+                      data-bs-boundary="window"
                       :aria-expanded="openMessageMenuId === item.message.messageId"
                       title="Opzioni messaggio"
                       @click.stop="toggleMessageMenu(item.message.messageId)"
                     >
                       <span class="material-symbols-outlined" style="font-size: 20px; vertical-align: middle;">more_vert</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-start shadow-sm" :class="{ show: openMessageMenuId === item.message.messageId }">
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" :class="{ show: openMessageMenuId === item.message.messageId }">
                       <li>
                         <button class="dropdown-item d-flex align-items-center gap-2" type="button" @click="reactToMessage(item.message.messageId); closeMessageMenu()">
                           <span class="material-symbols-outlined" style="font-size: 18px;">add_reaction</span> Reagisci
@@ -944,6 +950,10 @@ onUnmounted(() => {
   border: 1px solid #e5e7eb;
   border-radius: 999px;
   padding: 0.28rem 0.7rem;
+}
+
+.deleted-message-label {
+  color: #8f96a3;
 }
 
 .chat-header-clickable {
