@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 	"github.com/julienschmidt/httprouter"
@@ -46,6 +47,19 @@ func (rt *_router) createGroup(w http.ResponseWriter, r *http.Request, ps httpro
 		rt.baseLogger.WithError(err).Error("Error creating group")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
+	}
+
+	// messaggio di sistema persistente: gruppo creato
+	systemMsg := schemas.Message{
+		ID:     generateMessageId(),
+		Sender: creatorId,
+		Status: schemas.MsgStatusSent,
+		Kind:   "system_group_created",
+		Time:   time.Now(),
+		Text:   req.GroupName,
+	}
+	if err := rt.db.CreateMessage(group.ConvId, systemMsg); err != nil {
+		rt.baseLogger.WithError(err).Warn("failed to create system message for group creation")
 	}
 
 	// risposta

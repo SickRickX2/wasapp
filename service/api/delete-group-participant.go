@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 	"github.com/julienschmidt/httprouter"
@@ -23,6 +24,24 @@ func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	convId := schemas.ConversationId(ps.ByName("convId"))
 
 	// 3. Rimuove il membro dal DB usando myUserId
+	// Prima salviamo un messaggio di sistema persistente finché l'utente è ancora membro
+	leavingUserLabel := string(myUserId)
+	if leavingUser, userErr := rt.db.GetUserById(myUserId); userErr == nil && leavingUser.Name != "" {
+		leavingUserLabel = leavingUser.Name
+	}
+
+	systemMsg := schemas.Message{
+		ID:     generateMessageId(),
+		Sender: myUserId,
+		Status: schemas.MsgStatusSent,
+		Kind:   "system_leave_group",
+		Time:   time.Now(),
+		Text:   leavingUserLabel,
+	}
+	if createErr := rt.db.CreateMessage(convId, systemMsg); createErr != nil {
+		rt.baseLogger.WithError(createErr).Warn("failed to create system leave-group message")
+	}
+
 	err := rt.db.RemoveGroupMember(convId, myUserId)
 	if err != nil {
 		switch err.Error() {

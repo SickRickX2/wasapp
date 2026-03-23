@@ -1,6 +1,6 @@
 <script setup>
 import { Modal } from 'bootstrap'
-import { ref, watch } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import axios from '../services/axios'
 
 const emit = defineEmits(['chatCreated'])
@@ -11,6 +11,10 @@ const searchResults = ref([])
 const errorMessage = ref('')
 
 let debounceTimer = null
+
+onUnmounted(() => {
+  clearTimeout(debounceTimer)
+})
 
 watch(searchQuery, (value) => {
   clearTimeout(debounceTimer)
@@ -40,10 +44,33 @@ function resetModalState() {
   errorMessage.value = ''
 }
 
+function cleanupModalArtifacts() {
+  document.body.classList.remove('modal-open')
+  document.body.style.removeProperty('padding-right')
+  document.querySelectorAll('.modal-backdrop').forEach((el) => el.remove())
+}
+
 function closeModal() {
-  if (!modalRef.value) return
+  if (!modalRef.value) {
+    cleanupModalArtifacts()
+    return Promise.resolve()
+  }
+
   const instance = Modal.getOrCreateInstance(modalRef.value)
-  instance.hide()
+  return new Promise((resolve) => {
+    let resolved = false
+
+    const done = () => {
+      if (resolved) return
+      resolved = true
+      cleanupModalArtifacts()
+      resolve()
+    }
+
+    modalRef.value.addEventListener('hidden.bs.modal', done, { once: true })
+    instance.hide()
+    setTimeout(done, 350)
+  })
 }
 
 async function startPrivateChat(recipientId) {
@@ -53,9 +80,9 @@ async function startPrivateChat(recipientId) {
     if (response.status === 201) {
       const convId = response.data?.convId
       if (convId) {
-        emit('chatCreated', convId)
-        closeModal()
+        await closeModal()
         resetModalState()
+        emit('chatCreated', convId)
       }
     }
   } catch {

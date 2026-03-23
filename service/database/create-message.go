@@ -32,7 +32,15 @@ func (db *appdbimpl) CreateMessage(convId schemas.ConversationId, msg schemas.Me
 		replyToId.String = string(*msg.ReplyToId)
 		replyToId.Valid = true
 	}
-	var kind string = "normal"
+	kind := msg.Kind
+	if kind == "" {
+		kind = "normal"
+	}
+
+	status := msg.Status
+	if status == "" {
+		status = "sent"
+	}
 
 	// inserisce nel DB
 	const sqlQuery = `
@@ -48,7 +56,7 @@ func (db *appdbimpl) CreateMessage(convId schemas.ConversationId, msg schemas.Me
 		replyToId,
 		msg.Time,
 		kind,
-		"sent",
+		status,
 	)
 
 	return err

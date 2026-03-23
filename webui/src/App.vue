@@ -124,10 +124,10 @@ async function removeProfilePicture() {
             <div class="list-group list-group-flush">
               <RouterLink to="/" class="list-group-item list-group-item-action">Home</RouterLink>
               <button type="button" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#newChatModal">
-                <span class="material-symbols-outlined align-middle me-2" style="font-size: 20px;">chat</span> Nuova Chat
+                <span class="material-symbols-outlined align-middle me-2" style="font-size: 20px;">chat</span> New Chat
               </button>
               <button type="button" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#newGroupModal">
-                <span class="material-symbols-outlined align-middle me-2" style="font-size: 20px;">group_add</span> Nuovo Gruppo
+                <span class="material-symbols-outlined align-middle me-2" style="font-size: 20px;">group_add</span> New Group
               </button>
             </div>
           </aside>
@@ -163,7 +163,7 @@ async function removeProfilePicture() {
                 :disabled="isUploadingProfilePicture"
               >
                 <span v-if="isUploadingProfilePicture" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                {{ isUploadingProfilePicture ? 'Caricamento...' : 'Upload Photo' }}
+                {{ isUploadingProfilePicture ? 'Uploading...' : 'Upload Photo' }}
               </button>
               <button 
                 v-if="state.profilePictureUrl"
@@ -172,7 +172,7 @@ async function removeProfilePicture() {
                 @click="removeProfilePicture"
                 :disabled="isUploadingProfilePicture"
               >
-                Rimuovi Foto
+                Remove Photo
               </button>
             </div>
             <input

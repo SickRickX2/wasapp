@@ -1,6 +1,6 @@
 <script setup>
 import { Modal } from 'bootstrap'
-import { ref, watch } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import axios from '../services/axios'
 
 const emit = defineEmits(['groupCreated'])
@@ -16,6 +16,10 @@ const errorMessage = ref('')
 const isSubmitting = ref(false)
 
 let debounceTimer = null
+
+onUnmounted(() => {
+  clearTimeout(debounceTimer)
+})
 
 watch(searchQuery, (value) => {
   clearTimeout(debounceTimer)
@@ -34,7 +38,7 @@ watch(searchQuery, (value) => {
       searchResults.value = Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : []
     } catch {
       searchResults.value = []
-      errorMessage.value = 'Errore durante la ricerca utenti.'
+      errorMessage.value = 'Error while searching users.'
     }
   }, 300)
 })
@@ -81,16 +85,39 @@ function resetModalState() {
   isSubmitting.value = false
 }
 
+function cleanupModalArtifacts() {
+  document.body.classList.remove('modal-open')
+  document.body.style.removeProperty('padding-right')
+  document.querySelectorAll('.modal-backdrop').forEach((el) => el.remove())
+}
+
 function closeModal() {
-  if (!modalRef.value) return
+  if (!modalRef.value) {
+    cleanupModalArtifacts()
+    return Promise.resolve()
+  }
+
   const instance = Modal.getOrCreateInstance(modalRef.value)
-  instance.hide()
+  return new Promise((resolve) => {
+    let resolved = false
+
+    const done = () => {
+      if (resolved) return
+      resolved = true
+      cleanupModalArtifacts()
+      resolve()
+    }
+
+    modalRef.value.addEventListener('hidden.bs.modal', done, { once: true })
+    instance.hide()
+    setTimeout(done, 350)
+  })
 }
 
 async function submitGroup() {
   const trimmedGroupName = groupName.value.trim()
   if (!trimmedGroupName) {
-    errorMessage.value = 'Il nome gruppo è obbligatorio.'
+    errorMessage.value = 'Group name is required.'
     return
   }
 
@@ -111,17 +138,18 @@ async function submitGroup() {
         await axios.put(`/conversations/${convId}/group_photo`, groupPhotoData)
       }
 
+      await closeModal()
+      resetModalState()
+
       if (convId) {
         emit('groupCreated', convId)
       }
-      closeModal()
-      resetModalState()
       return
     }
 
-    errorMessage.value = 'Impossibile creare il gruppo.'
+    errorMessage.value = 'Unable to create group.'
   } catch {
-    errorMessage.value = 'Impossibile creare il gruppo.'
+    errorMessage.value = 'Unable to create group.'
   } finally {
     isSubmitting.value = false
   }
@@ -140,19 +168,19 @@ async function submitGroup() {
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 id="newGroupModalLabel" class="modal-title">Nuovo Gruppo</h5>
+          <h5 id="newGroupModalLabel" class="modal-title">New Group</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @click="resetModalState" />
         </div>
 
         <div class="modal-body">
-          <label class="form-label">Nome Gruppo</label>
-          <input v-model="groupName" type="text" class="form-control mb-3" placeholder="Inserisci nome gruppo" />
+          <label class="form-label">Group Name</label>
+          <input v-model="groupName" type="text" class="form-control mb-3" placeholder="Enter group name" />
 
           <div class="mb-3">
-            <label class="form-label d-block">Immagine Gruppo (opzionale)</label>
+            <label class="form-label d-block">Group Image (optional)</label>
             <div class="d-flex align-items-center gap-2">
               <button type="button" class="btn btn-outline-secondary btn-sm" @click="triggerGroupPhotoInput">
-                Carica immagine
+                Upload image
               </button>
               <small v-if="selectedGroupPhotoFile" class="text-muted text-truncate" style="max-width: 220px;">
                 {{ selectedGroupPhotoFile.name }}
@@ -177,14 +205,14 @@ async function submitGroup() {
               class="badge rounded-pill text-bg-primary"
               role="button"
               @click="removeSelectedUser(user.userId)"
-              :title="`Rimuovi ${user.userName}`"
+              :title="`Remove ${user.userName}`"
             >
               {{ user.userName }} ✕
             </span>
           </div>
 
-          <label class="form-label">Cerca utenti</label>
-          <input v-model="searchQuery" type="text" class="form-control mb-3" placeholder="Cerca utente..." />
+          <label class="form-label">Search users</label>
+          <input v-model="searchQuery" type="text" class="form-control mb-3" placeholder="Search user..." />
 
           <ul class="list-group">
             <li
@@ -196,10 +224,10 @@ async function submitGroup() {
               @click="toggleUser(user)"
             >
               <span>{{ user.userName }}</span>
-              <span class="small" v-if="isSelected(user.userId)">Selezionato</span>
+              <span class="small" v-if="isSelected(user.userId)">Selected</span>
             </li>
             <li v-if="searchQuery.trim().length > 0 && searchResults.length === 0" class="list-group-item text-muted">
-              Nessun risultato
+              No results
             </li>
           </ul>
 
@@ -209,9 +237,9 @@ async function submitGroup() {
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click="resetModalState">Annulla</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click="resetModalState">Cancel</button>
           <button type="button" class="btn btn-primary" :disabled="isSubmitting" @click="submitGroup">
-            {{ isSubmitting ? 'Creazione...' : 'Crea Gruppo' }}
+            {{ isSubmitting ? 'Creating...' : 'Create Group' }}
           </button>
         </div>
       </div>

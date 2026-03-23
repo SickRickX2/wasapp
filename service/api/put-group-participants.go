@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	appErrs "github.com/SickRickX2/wasapp/service/api/errs"
 
@@ -73,6 +74,27 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 			http.Error(w, "Bad request", http.StatusBadRequest)
 		}
 		return
+	}
+
+	// messaggi di sistema persistenti per ogni utente aggiunto
+	for _, addedUserId := range req.UserIds {
+		addedUserLabel := string(addedUserId)
+		if addedUser, userErr := rt.db.GetUserById(addedUserId); userErr == nil && addedUser.Name != "" {
+			addedUserLabel = addedUser.Name
+		}
+
+		systemMsg := schemas.Message{
+			ID:     generateMessageId(),
+			Sender: requestingUserId,
+			Status: schemas.MsgStatusSent,
+			Kind:   "system_add_member",
+			Time:   time.Now(),
+			Text:   addedUserLabel,
+		}
+
+		if createErr := rt.db.CreateMessage(convId, systemMsg); createErr != nil {
+			rt.baseLogger.WithError(createErr).Warn("failed to create system add-member message")
+		}
 	}
 
 	// 5. Successo: ritorna il gruppo aggiornato come da YAML
