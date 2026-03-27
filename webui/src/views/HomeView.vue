@@ -24,6 +24,7 @@ const isAddingGroupMember = ref(false)
 const selectedMediaFile = ref(null)
 const selectedMediaPreviewUrl = ref('')
 const messagesContainer = ref(null)
+const quickEmojis = ['👍', '❤️', '😂', '😯', '😢', '🙏']
 let pollingInterval = null
 let groupMemberSearchTimer = null
 
@@ -560,8 +561,38 @@ async function sendMessage() {
   }
 }
 
-const reactToMessage = (msgId) => {
-  console.log('Reagisci a', msgId)
+async function toggleReaction(message, emoji) {
+  if (!selectedConversationId.value || !message?.messageId || !emoji) return
+
+  const existingReaction = message.reactions?.find((r) => r.userId === state.userId)
+  const isRemoving = existingReaction && existingReaction.emoji === emoji
+
+  try {
+    let response
+    if (isRemoving) {
+      response = await axios.delete(
+        `/conversations/${selectedConversationId.value}/messages/${message.messageId}/reaction`
+      )
+    } else {
+      response = await axios.put(
+        `/conversations/${selectedConversationId.value}/messages/${message.messageId}/reaction`,
+        { emoji }
+      )
+    }
+
+    const updatedMessage = response.data
+    const index = currentMessages.value.findIndex((m) => m?.messageId === message.messageId)
+    if (index >= 0 && updatedMessage?.messageId) {
+      currentMessages.value[index] = {
+        ...currentMessages.value[index],
+        ...updatedMessage,
+      }
+    }
+
+    closeMessageMenu()
+  } catch {
+    alert('Unable to update reaction')
+  }
 }
 
 const forwardMessage = (msgId) => {
@@ -759,6 +790,18 @@ onUnmounted(() => {
                     role="button"
                     @click="openImagePreview(item.message.media.url)"
                   />
+
+                  <div v-if="item.message.reactions && item.message.reactions.length > 0" class="d-flex flex-wrap gap-1 mt-1">
+                    <span
+                      v-for="(reaction, index) in item.message.reactions"
+                      :key="index"
+                      class="badge bg-light text-dark border shadow-sm rounded-pill"
+                      style="font-size: 0.8rem;"
+                      :title="reaction.userId"
+                    >
+                      {{ reaction.emoji }}
+                    </span>
+                  </div>
                 </div>
 
                 <div v-else class="d-flex align-items-center gap-2 deleted-message-label">
@@ -773,9 +816,7 @@ onUnmounted(() => {
                   >
                     {{ formatMessageTime(item.message.time) }}
                   </div>
-                </div>
 
-                <div class="d-flex justify-content-start mt-1" v-if="item.message.status !== 'deleted'">
                   <div class="dropdown" @click.stop>
                     <button
                       class="btn btn-sm btn-link p-0 border-0"
@@ -790,9 +831,15 @@ onUnmounted(() => {
                       <span class="material-symbols-outlined" style="font-size: 20px; vertical-align: middle;">more_vert</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm" :class="{ show: openMessageMenuId === item.message.messageId }">
-                      <li>
-                        <button class="dropdown-item d-flex align-items-center gap-2" type="button" @click="reactToMessage(item.message.messageId); closeMessageMenu()">
-                          <span class="material-symbols-outlined" style="font-size: 18px;">add_reaction</span> Reagisci
+                      <li class="px-2 py-1 d-flex gap-1 justify-content-center">
+                        <button
+                          v-for="emoji in quickEmojis"
+                          :key="emoji"
+                          class="btn btn-sm btn-light rounded-circle fs-5 p-1 lh-1"
+                          type="button"
+                          @click="toggleReaction(item.message, emoji)"
+                        >
+                          {{ emoji }}
                         </button>
                       </li>
                       <li>
