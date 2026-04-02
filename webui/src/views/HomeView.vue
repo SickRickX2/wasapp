@@ -4,7 +4,10 @@ import axios from '../services/axios'
 import { state } from '../services/state'
 import NewChatModal from '../components/NewChatModal.vue'
 import NewGroupModal from '../components/NewGroupModal.vue'
-import UserAvatar from '../components/UserAvatar.vue'
+import ConversationsSidebar from '../components/ConversationsSidebar.vue'
+import ConversationHeader from '../components/ConversationHeader.vue'
+import GroupInfoModal from '../components/GroupInfoModal.vue'
+import MessageBubble from '../components/MessageBubble.vue'
 
 const conversations = ref([])
 const currentMessages = ref([])
@@ -24,6 +27,7 @@ const isAddingGroupMember = ref(false)
 const selectedMediaFile = ref(null)
 const selectedMediaPreviewUrl = ref('')
 const messagesContainer = ref(null)
+const messageToForward = ref(null)
 const quickEmojis = ['👍', '❤️', '😂', '😯', '😢', '🙏']
 let pollingInterval = null
 let groupMemberSearchTimer = null
@@ -47,6 +51,19 @@ function formatMessageTime(dateLike) {
   const hours = String(d.getHours()).padStart(2, '0')
   const minutes = String(d.getMinutes()).padStart(2, '0')
   return `${hours}:${minutes}`
+}
+
+const aggregateReactions = (reactions) => {
+  if (!reactions || reactions.length === 0) return []
+  const counts = {}
+  reactions.forEach((r) => {
+    if (!counts[r.emoji]) {
+      counts[r.emoji] = { emoji: r.emoji, count: 0, users: [] }
+    }
+    counts[r.emoji].count++
+    counts[r.emoji].users.push(r.userId)
+  })
+  return Object.values(counts)
 }
 
 function renderSystemMessage(message) {
@@ -102,7 +119,7 @@ const messageTimeline = computed(() => {
 
     timeline.push({
       itemType: 'message',
-      key: `msg-${message.messageId || message.time || timeline.length}`,
+      key: `msg-${message.messageId || message.time || 'fallback'}`,
       message,
     })
   }
@@ -129,6 +146,17 @@ const selectedConversationParticipantsText = computed(() => {
   })
 
   return labels.join(', ')
+})
+
+const selectedConversationModalParticipants = computed(() => {
+  const conv = selectedConversation.value
+  if (!conv || conv.type !== 'group') return []
+
+  return getOrderedParticipantIds(conv).map((participantId) => ({
+    id: participantId,
+    label: participantId === state.userId ? 'Me' : getUsernameFromId(participantId) || participantId,
+    avatarUrl: getParticipantAvatarUrl(participantId),
+  }))
 })
 
 const scrollToBottom = async () => {
@@ -447,6 +475,7 @@ async function loadMessages(conversationId, options = {}) {
       if (shouldStickToBottom) {
         await scrollToBottom()
       }
+      await markUnreadMessagesAsSeen(currentMessages.value)
       return
     }
     currentMessages.value = Array.isArray(data) ? data : []
@@ -455,8 +484,22 @@ async function loadMessages(conversationId, options = {}) {
     if (shouldStickToBottom) {
       await scrollToBottom()
     }
+    await markUnreadMessagesAsSeen(currentMessages.value)
   } catch (err) {
     console.error('Failed to load messages', err)
+  }
+}
+
+async function markUnreadMessagesAsSeen(messages) {
+  const unreadMessages = messages.filter((m) => m.sender !== state.userId && m.status !== 'seen')
+
+  for (const msg of unreadMessages) {
+    try {
+      await axios.put(`/conversations/${selectedConversationId.value}/messages/${msg.messageId}/seen`)
+      msg.status = 'seen'
+    } catch (error) {
+      console.error('Error marking message as seen', error)
+    }
   }
 }
 
@@ -464,6 +507,7 @@ async function syncData() {
   await loadConversations()
   if (selectedConversationId.value) {
     await loadMessages(selectedConversationId.value)
+    await markUnreadMessagesAsSeen(currentMessages.value)
   }
 }
 
@@ -564,39 +608,71 @@ async function sendMessage() {
 async function toggleReaction(message, emoji) {
   if (!selectedConversationId.value || !message?.messageId || !emoji) return
 
-  const existingReaction = message.reactions?.find((r) => r.userId === state.userId)
-  const isRemoving = existingReaction && existingReaction.emoji === emoji
+  // 1. Trova se l'utente ha già reagito
+  const existingReactionIndex = message.reactions?.findIndex((r) => r.userId === state.userId)
+  const isRemoving = existingReactionIndex !== -1 && message.reactions[existingReactionIndex].emoji === emoji
 
+  // 2. Clona lo stato precedente in caso di errore (Backup)
+  const backupReactions = [...(message.reactions || [])]
+
+  // 3. AGGIORNAMENTO OTTIMISTICO (Istantaneo sulla UI)
+  if (!message.reactions) message.reactions = []
+
+  if (isRemoving) {
+    // Rimuovi la reazione localmente
+    message.reactions.splice(existingReactionIndex, 1)
+  } else {
+    if (existingReactionIndex !== -1) {
+      // Cambia l'emoji esistente
+      message.reactions[existingReactionIndex].emoji = emoji
+    } else {
+      // Aggiungi nuova reazione
+      message.reactions.push({ userId: state.userId, emoji: emoji })
+    }
+  }
+
+  closeMessageMenu()
+
+  // 4. Esegui la chiamata API in background
   try {
-    let response
     if (isRemoving) {
-      response = await axios.delete(
+      await axios.delete(
         `/conversations/${selectedConversationId.value}/messages/${message.messageId}/reaction`
       )
     } else {
-      response = await axios.put(
+      await axios.put(
         `/conversations/${selectedConversationId.value}/messages/${message.messageId}/reaction`,
         { emoji }
       )
     }
-
-    const updatedMessage = response.data
-    const index = currentMessages.value.findIndex((m) => m?.messageId === message.messageId)
-    if (index >= 0 && updatedMessage?.messageId) {
-      currentMessages.value[index] = {
-        ...currentMessages.value[index],
-        ...updatedMessage,
-      }
-    }
-
-    closeMessageMenu()
   } catch {
-    alert('Unable to update reaction')
+    console.error('Errore reazione, ripristino stato...')
+    // Ripristina in caso di errore di rete
+    message.reactions = backupReactions
   }
 }
 
-const forwardMessage = (msgId) => {
-  console.log('Inoltra', msgId)
+const forwardMessage = (message) => {
+  messageToForward.value = message
+}
+
+const executeForward = async (targetConvId) => {
+  if (!messageToForward.value) return
+  try {
+    await axios.post(
+      `/conversations/${selectedConversationId.value}/messages/${messageToForward.value.messageId}/forwarded`,
+      { destinationConversationId: targetConvId }
+    )
+
+    document.getElementById('closeForwardModalBtn')?.click()
+
+    selectedConversationId.value = targetConvId
+    await loadMessages(targetConvId, { forceScroll: true })
+    messageToForward.value = null
+  } catch (error) {
+    console.error('Error forwarding message', error)
+    alert('Unable to forward message')
+  }
 }
 
 async function deleteMessage(messageId) {
@@ -650,6 +726,37 @@ async function onGroupCreated(convId) {
   await loadMessages(convId, { forceScroll: true })
 }
 
+async function handleUpdateGroupName(newName) {
+  if (!selectedConversationId.value) return
+
+  try {
+    await axios.put(`/conversations/${selectedConversationId.value}/group_name`, {
+      groupName: newName,
+    })
+
+    await loadConversations()
+  } catch {
+    alert('Unable to update group name')
+  }
+}
+
+async function handleUpdateGroupPhoto(file) {
+  if (!selectedConversationId.value || !file) return
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    await axios.put(`/conversations/${selectedConversationId.value}/group_photo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+    await loadConversations()
+  } catch {
+    alert('Unable to update group photo')
+  }
+}
+
 async function leaveSelectedGroup() {
   const conv = selectedConversation.value
   if (!conv || conv.type !== 'group') return
@@ -692,36 +799,16 @@ onUnmounted(() => {
 
 <template>
   <div class="d-flex h-100 overflow-hidden bg-white" style="min-height: 0;">
-    <aside class="d-flex flex-column h-100 border-end chat-sidebar">
-      <div class="p-3 border-bottom d-flex align-items-center">
-        <h2 class="h5 mb-0">Chat</h2>
-      </div>
-
-      <div class="list-group list-group-flush overflow-y-auto flex-grow-1">
-        <button
-          v-for="conversation in conversations"
-          :key="conversation.convId"
-          type="button"
-          class="list-group-item list-group-item-action d-flex align-items-center gap-3"
-          :class="{ active: selectedConversationId === conversation.convId }"
-          @click="selectConversation(conversation.convId)"
-        >
-          <UserAvatar 
-            :name="conversation.type === 'group' ? getChatTitle(conversation) : getOtherParticipantId(conversation) || 'user'" 
-            :displayName="conversation.type === 'group' ? conversation.groupName || 'Group' : getUsernameFromId(conversation.participants?.find(pid => pid !== state.userId))"
-            :size="40"
-            :realImageUrl="getConversationAvatarUrl(conversation)"
-            class="flex-shrink-0"
-          />
-          <div class="flex-grow-1 min-w-0">
-            <div class="fw-semibold text-truncate">{{ getChatTitle(conversation) }}</div>
-            <small class="text-muted" :class="{ 'text-white-50': selectedConversationId === conversation.convId }">
-              {{ conversation.type }}
-            </small>
-          </div>
-        </button>
-      </div>
-    </aside>
+    <ConversationsSidebar
+      :conversations="conversations"
+      :selectedConversationId="selectedConversationId"
+      :userId="state.userId"
+      :getChatTitle="getChatTitle"
+      :getOtherParticipantId="getOtherParticipantId"
+      :getUsernameFromId="getUsernameFromId"
+      :getConversationAvatarUrl="getConversationAvatarUrl"
+      @select="selectConversation"
+    />
 
     <section class="d-flex flex-column h-100 min-w-0 flex-grow-1" style="min-height: 0;">
       <template v-if="!selectedConversationId">
@@ -731,27 +818,21 @@ onUnmounted(() => {
       </template>
 
       <template v-else>
-        <header
-          class="border-bottom p-3 bg-white flex-shrink-0 d-flex align-items-center gap-3 chat-header-clickable"
-          role="button"
-          @click="openConversationInfoModal"
-        >
-          <UserAvatar 
-            :name="selectedConversation?.type === 'group' ? getChatTitle(selectedConversation) : getOtherParticipantId(selectedConversation) || 'user'" 
-            :displayName="selectedConversation?.type === 'group' ? selectedConversation?.groupName || 'Group' : getUsernameFromId(selectedConversation?.participants?.find(pid => pid !== state.userId))"
-            :size="40"
-            :realImageUrl="getConversationAvatarUrl(selectedConversation)"
-          />
-          <div class="min-w-0">
-            <h3 class="h6 mb-0 text-truncate">{{ getChatTitle(selectedConversation) }}</h3>
-            <small v-if="selectedConversation?.type === 'group'" class="text-muted text-truncate d-block">{{ selectedConversationParticipantsText }}</small>
-          </div>
-        </header>
+        <ConversationHeader
+          :selectedConversation="selectedConversation"
+          :chatTitle="getChatTitle(selectedConversation)"
+          :participantsText="selectedConversationParticipantsText"
+          :userId="state.userId"
+          :getOtherParticipantId="getOtherParticipantId"
+          :getUsernameFromId="getUsernameFromId"
+          :getConversationAvatarUrl="getConversationAvatarUrl"
+          @open-info="openConversationInfoModal"
+        />
 
         <div ref="messagesContainer" class="flex-grow-1 overflow-y-auto p-3" style="min-height: 0;">
           <div
-            v-for="(item, index) in messageTimeline"
-            :key="item.key || index"
+            v-for="item in messageTimeline"
+            :key="item.key"
           >
             <div v-if="item.itemType === 'day-separator'" class="d-flex justify-content-center my-3">
               <span class="date-separator-badge">{{ item.label }}</span>
@@ -766,97 +847,23 @@ onUnmounted(() => {
 
             <div
               v-else-if="item.itemType === 'message'"
-              class="d-flex mb-2"
-              :class="item.message.sender === state.userId ? 'justify-content-end' : 'justify-content-start'"
             >
-              <div
-                class="p-2 rounded text-break shadow-sm message-bubble"
-                :class="{
-                  'bg-primary text-white': item.message.sender === state.userId && item.message.status !== 'deleted',
-                  'bg-white text-dark': item.message.sender !== state.userId && item.message.status !== 'deleted',
-                  'bg-light fst-italic': item.message.status === 'deleted'
-                }"
-                :style="item.message.status === 'deleted' ? 'border: 2px dashed #adb5bd;' : ''"
-              >
-                <div v-if="item.message.status !== 'deleted'">
-                  <div class="small mb-1 opacity-75">{{ getSenderLabel(item.message) }}</div>
-                  <div v-if="item.message.text">{{ item.message.text }}</div>
-                  <img
-                    v-if="item.message.media?.url"
-                    :src="getMediaUrl(item.message.media.url)"
-                    alt="media"
-                    class="img-fluid rounded mt-2 media-thumb"
-                    style="max-height: 220px"
-                    role="button"
-                    @click="openImagePreview(item.message.media.url)"
-                  />
-
-                  <div v-if="item.message.reactions && item.message.reactions.length > 0" class="d-flex flex-wrap gap-1 mt-1">
-                    <span
-                      v-for="(reaction, index) in item.message.reactions"
-                      :key="index"
-                      class="badge bg-light text-dark border shadow-sm rounded-pill"
-                      style="font-size: 0.8rem;"
-                      :title="reaction.userId"
-                    >
-                      {{ reaction.emoji }}
-                    </span>
-                  </div>
-                </div>
-
-                <div v-else class="d-flex align-items-center gap-2 deleted-message-label">
-                  <span class="material-symbols-outlined" style="font-size: 16px;">block</span>
-                  Questo messaggio è stato eliminato
-                </div>
-
-                <div v-if="item.message.status !== 'deleted'" class="d-flex align-items-center justify-content-between mt-1 gap-2">
-                  <div
-                    class="small"
-                    :class="item.message.sender === state.userId ? 'text-white-50' : 'text-muted'"
-                  >
-                    {{ formatMessageTime(item.message.time) }}
-                  </div>
-
-                  <div class="dropdown" @click.stop>
-                    <button
-                      class="btn btn-sm btn-link p-0 border-0"
-                      :class="item.message.sender === state.userId ? 'text-white-50' : 'text-muted'"
-                      type="button"
-                      data-bs-toggle="dropdown"
-                      data-bs-boundary="window"
-                      :aria-expanded="openMessageMenuId === item.message.messageId"
-                      title="Opzioni messaggio"
-                      @click.stop="toggleMessageMenu(item.message.messageId)"
-                    >
-                      <span class="material-symbols-outlined" style="font-size: 20px; vertical-align: middle;">more_vert</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" :class="{ show: openMessageMenuId === item.message.messageId }">
-                      <li class="px-2 py-1 d-flex gap-1 justify-content-center">
-                        <button
-                          v-for="emoji in quickEmojis"
-                          :key="emoji"
-                          class="btn btn-sm btn-light rounded-circle fs-5 p-1 lh-1"
-                          type="button"
-                          @click="toggleReaction(item.message, emoji)"
-                        >
-                          {{ emoji }}
-                        </button>
-                      </li>
-                      <li>
-                        <button class="dropdown-item d-flex align-items-center gap-2" type="button" @click="forwardMessage(item.message.messageId); closeMessageMenu()">
-                          <span class="material-symbols-outlined" style="font-size: 18px;">forward</span> Inoltra
-                        </button>
-                      </li>
-                      <li><hr class="dropdown-divider"></li>
-                      <li v-if="item.message.sender === state.userId">
-                        <button class="dropdown-item text-danger d-flex align-items-center gap-2" type="button" @click="deleteMessage(item.message.messageId); closeMessageMenu()">
-                          <span class="material-symbols-outlined" style="font-size: 18px;">delete</span> Elimina
-                        </button>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+              <MessageBubble
+                :message="item.message"
+                :userId="state.userId"
+                :isMenuOpen="openMessageMenuId === item.message.messageId"
+                :quickEmojis="quickEmojis"
+                :getSenderLabel="getSenderLabel"
+                :getMediaUrl="getMediaUrl"
+                :aggregateReactions="aggregateReactions"
+                :formatMessageTime="formatMessageTime"
+                @open-image-preview="openImagePreview"
+                @toggle-menu="toggleMessageMenu"
+                @toggle-reaction="toggleReaction"
+                @forward-message="forwardMessage"
+                @delete-message="deleteMessage"
+                @close-menu="closeMessageMenu"
+              />
             </div>
           </div>
         </div>
@@ -894,94 +901,70 @@ onUnmounted(() => {
     <NewChatModal @chatCreated="onChatCreated" />
     <NewGroupModal @groupCreated="onGroupCreated" />
 
-    <div
-      v-if="showConversationInfoModal && selectedConversation"
-      class="conversation-info-overlay"
-      @click="closeConversationInfoModal"
-    >
-      <div class="conversation-info-modal" @click.stop>
-        <button type="button" class="btn-close conversation-info-close" aria-label="Close" @click="closeConversationInfoModal"></button>
-
-        <UserAvatar
-          :name="selectedConversation.type === 'group' ? getChatTitle(selectedConversation) : getOtherParticipantId(selectedConversation) || 'user'"
-          :displayName="selectedConversation.type === 'group' ? selectedConversation.groupName || 'Group' : getUsernameFromId(getOtherParticipantId(selectedConversation))"
-          :size="104"
-          :realImageUrl="getConversationAvatarUrl(selectedConversation)"
-          class="mx-auto mb-3"
-        />
-
-        <h4 class="h5 text-center mb-2">{{ getChatTitle(selectedConversation) }}</h4>
-        <p class="text-center text-muted mb-4">{{ selectedConversation.type === 'group' ? 'Group chat' : 'Private chat' }}</p>
-
-        <div v-if="selectedConversation.type === 'group'" class="mb-4">
-          <h6 class="mb-2">Participants</h6>
-          <div class="list-group participants-list">
-            <div
-              v-for="participantId in getOrderedParticipantIds(selectedConversation)"
-              :key="participantId"
-              class="list-group-item d-flex align-items-center gap-2"
-            >
-              <UserAvatar
-                :name="participantId"
-                :displayName="participantId === state.userId ? 'Me' : getUsernameFromId(participantId)"
-                :size="30"
-                :realImageUrl="getParticipantAvatarUrl(participantId)"
-              />
-              <span class="small text-truncate">{{ participantId === state.userId ? 'Me' : (getUsernameFromId(participantId) || participantId) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="selectedConversation.type === 'group'" class="mb-4">
-          <h6 class="mb-2">Add participant</h6>
-          <input
-            v-model="groupMemberSearchQuery"
-            type="text"
-            class="form-control form-control-sm mb-2"
-            placeholder="Search user..."
-          />
-          <div class="list-group participants-list" v-if="groupMemberSearchResults.length > 0">
-            <button
-              v-for="user in groupMemberSearchResults"
-              :key="user.userId"
-              type="button"
-              class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-              :disabled="isAddingGroupMember"
-              @click="addUserToSelectedGroup(user)"
-            >
-              <span class="text-truncate me-2">{{ user.userName }}</span>
-              <span class="badge text-bg-light">Add</span>
-            </button>
-          </div>
-        </div>
-
-        <div v-if="selectedConversation.type === 'group'" class="d-flex justify-content-center">
-          <button type="button" class="btn btn-outline-danger" @click="leaveSelectedGroup">
-            Leave group
-          </button>
-        </div>
-      </div>
-    </div>
+    <GroupInfoModal
+      :show="showConversationInfoModal"
+      :conversation="selectedConversation"
+      :chatTitle="getChatTitle(selectedConversation)"
+      :conversationAvatarName="selectedConversation?.type === 'group' ? getChatTitle(selectedConversation) : getOtherParticipantId(selectedConversation) || 'user'"
+      :conversationAvatarDisplayName="selectedConversation?.type === 'group' ? selectedConversation?.groupName || 'Group' : getUsernameFromId(getOtherParticipantId(selectedConversation))"
+      :conversationAvatarUrl="getConversationAvatarUrl(selectedConversation)"
+      :participants="selectedConversationModalParticipants"
+      :groupMemberSearchQuery="groupMemberSearchQuery"
+      :groupMemberSearchResults="groupMemberSearchResults"
+      :isAddingGroupMember="isAddingGroupMember"
+      @close="closeConversationInfoModal"
+      @update:groupMemberSearchQuery="groupMemberSearchQuery = $event"
+      @update-name="handleUpdateGroupName"
+      @update-photo="handleUpdateGroupPhoto"
+      @add-user="addUserToSelectedGroup"
+      @leave-group="leaveSelectedGroup"
+    />
 
     <div v-if="previewImageUrl" class="image-preview-overlay" @click="closeImagePreview">
       <button class="btn btn-light image-preview-close" type="button" @click.stop="closeImagePreview">✕</button>
       <img :src="previewImageUrl" alt="Image preview" class="image-preview-full" @click.stop />
     </div>
+
+    <div class="modal fade" id="forwardModal" tabindex="-1" aria-labelledby="forwardModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5" id="forwardModalLabel">Inoltra messaggio a...</h1>
+            <button type="button" class="btn-close" id="closeForwardModalBtn" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-0">
+            <div class="list-group list-group-flush">
+              <template v-for="conv in conversations" :key="conv.convId">
+                <button
+                  v-if="conv.convId !== selectedConversationId"
+                  type="button"
+                  class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3"
+                  @click="executeForward(conv.convId)"
+                >
+                  <div class="d-flex align-items-center gap-3">
+                    <UserAvatar
+                      :name="conv.type === 'group' ? getChatTitle(conv) : getOtherParticipantId(conv) || 'user'"
+                      :displayName="conv.type === 'group' ? conv.groupName || 'Group' : getUsernameFromId(conv.participants?.find(pid => pid !== state.userId))"
+                      :size="40"
+                      :realImageUrl="getConversationAvatarUrl(conv)"
+                    />
+                    <span class="fw-medium">{{ getChatTitle(conv) }}</span>
+                  </div>
+                  <span class="material-symbols-outlined text-primary">send</span>
+                </button>
+              </template>
+              <div v-if="conversations.length <= 1" class="p-4 text-center text-muted">
+                Nessun'altra chat disponibile per l'inoltro.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.chat-sidebar {
-  width: 32%;
-  min-width: 260px;
-  max-width: 420px;
-}
-
-.message-bubble {
-  max-width: 75%;
-  word-break: break-word;
-}
-
 .date-separator-badge {
   font-size: 0.75rem;
   color: #6c757d;
@@ -999,53 +982,10 @@ onUnmounted(() => {
   padding: 0.28rem 0.7rem;
 }
 
-.deleted-message-label {
-  color: #8f96a3;
-}
-
-.chat-header-clickable {
-  cursor: pointer;
-}
-
-.conversation-info-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2100;
-  padding: 1rem;
-}
-
-.conversation-info-modal {
-  position: relative;
-  width: min(92vw, 420px);
-  background: #fff;
-  border-radius: 0.75rem;
-  padding: 1.25rem 1.25rem 1.5rem;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-}
-
-.conversation-info-close {
-  position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
-}
-
-.participants-list {
-  max-height: 180px;
-  overflow-y: auto;
-}
-
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   font-size: 24px;
   vertical-align: middle;
-}
-
-.media-thumb {
-  cursor: zoom-in;
 }
 
 .image-preview-overlay {
