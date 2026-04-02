@@ -28,6 +28,7 @@ const selectedMediaFile = ref(null)
 const selectedMediaPreviewUrl = ref('')
 const messagesContainer = ref(null)
 const messageToForward = ref(null)
+const messageToReply = ref(null)
 const quickEmojis = ['👍', '❤️', '😂', '😯', '😢', '🙏']
 let pollingInterval = null
 let groupMemberSearchTimer = null
@@ -281,6 +282,21 @@ function getSenderLabel(message) {
   const senderName = getUsernameFromId(message.sender)
   if (senderName) return senderName
   return message.sender
+}
+
+function getReplyMessageContent(messageId) {
+  if (!messageId) return ''
+  const repliedMessage = currentMessages.value.find(m => m.messageId === messageId)
+  if (!repliedMessage) return ''
+  if (repliedMessage.media?.url) return '📷 Photo'
+  return repliedMessage.text || ''
+}
+
+function getReplyFromSender(messageId) {
+  if (!messageId) return ''
+  const repliedMessage = currentMessages.value.find(m => m.messageId === messageId)
+  if (!repliedMessage) return ''
+  return getSenderLabel(repliedMessage)
 }
 
 function getMediaUrl(rawUrl) {
@@ -587,10 +603,14 @@ async function sendMessage() {
     if (mediaPayload) {
       payload.media = mediaPayload
     }
+    if (messageToReply.value) {
+      payload.replyToId = messageToReply.value.messageId
+    }
 
     await axios.post(`/conversations/${selectedConversationId.value}/messages`, payload)
     newMessageText.value = ''
     clearSelectedMedia()
+    messageToReply.value = null
     await loadMessages(selectedConversationId.value, { forceScroll: true })
   } catch (err) {
     if (err?.response?.status === 413) {
@@ -654,6 +674,11 @@ async function toggleReaction(message, emoji) {
 
 const forwardMessage = (message) => {
   messageToForward.value = message
+}
+
+const prepareReply = (message) => {
+  messageToReply.value = message
+  document.querySelector('.chat-input-area input')?.focus()
 }
 
 const executeForward = async (targetConvId) => {
@@ -857,10 +882,13 @@ onUnmounted(() => {
                 :getMediaUrl="getMediaUrl"
                 :aggregateReactions="aggregateReactions"
                 :formatMessageTime="formatMessageTime"
+                :getReplyMessageContent="getReplyMessageContent"
+                  :getReplyFromSender="getReplyFromSender"
                 @open-image-preview="openImagePreview"
                 @toggle-menu="toggleMessageMenu"
                 @toggle-reaction="toggleReaction"
                 @forward-message="forwardMessage"
+                @reply-message="prepareReply"
                 @delete-message="deleteMessage"
                 @close-menu="closeMessageMenu"
               />
@@ -869,6 +897,13 @@ onUnmounted(() => {
         </div>
 
         <div class="p-3 bg-light border-top mt-auto flex-shrink-0">
+          <div v-if="messageToReply" class="bg-light border-start border-4 border-primary p-2 mb-2 rounded d-flex justify-content-between align-items-center shadow-sm">
+            <div class="flex-grow-1 min-w-0">
+              <small class="d-block text-muted fw-bold">Rispondi a {{ getSenderLabel(messageToReply) }}</small>
+              <small class="d-block text-truncate text-muted">{{ messageToReply.text || '(No text)' }}</small>
+            </div>
+            <button type="button" class="btn btn-sm btn-close ms-2" @click="messageToReply = null"></button>
+          </div>
           <div class="input-group">
             <button class="btn btn-outline-secondary d-flex align-items-center" type="button" @click="triggerFileInput">
               <span class="material-symbols-outlined">add_photo_alternate</span>

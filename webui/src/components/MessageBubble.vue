@@ -32,6 +32,14 @@ defineProps({
     type: Function,
     required: true,
   },
+  getReplyMessageContent: {
+    type: Function,
+    required: true,
+  },
+  getReplyFromSender: {
+    type: Function,
+    required: true,
+  },
 })
 
 const emit = defineEmits([
@@ -39,6 +47,7 @@ const emit = defineEmits([
   'toggle-menu',
   'toggle-reaction',
   'forward-message',
+  'reply-message',
   'delete-message',
   'close-menu',
 ])
@@ -62,6 +71,10 @@ const emit = defineEmits([
         <div v-if="message.kind === 'forwarded'" class="d-flex align-items-center gap-1 mb-1 small text-muted">
           <span class="material-symbols-outlined" style="font-size: 14px;">forward</span>
           <span>Forwarded</span>
+        </div>
+        <div v-if="message.replyToId" class="border-start border-3 border-secondary ps-2 mb-2 bg-light bg-opacity-50 rounded py-1">
+          <small class="d-block text-muted fw-bold">{{ getReplyFromSender(message.replyToId) }}</small>
+          <small class="d-block text-muted text-truncate">{{ getReplyMessageContent(message.replyToId) }}</small>
         </div>
         <div class="small mb-1 opacity-75">{{ getSenderLabel(message) }}</div>
         <div v-if="message.text">{{ message.text }}</div>
@@ -149,7 +162,11 @@ const emit = defineEmits([
                 <span class="material-symbols-outlined" style="font-size: 18px;">forward</span> Inoltra
               </button>
             </li>
-            <li><hr class="dropdown-divider"></li>
+            <li>
+              <button class="dropdown-item d-flex align-items-center gap-2" type="button" @click="emit('reply-message', message); emit('close-menu')">
+                <span class="material-symbols-outlined" style="font-size: 18px;">reply</span> Rispondi
+              </button>
+            </li>
             <li v-if="message.sender === userId">
               <button class="dropdown-item text-danger d-flex align-items-center gap-2" type="button" @click="emit('delete-message', message.messageId); emit('close-menu')">
                 <span class="material-symbols-outlined" style="font-size: 18px;">delete</span> Elimina
