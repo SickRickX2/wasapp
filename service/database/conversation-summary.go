@@ -43,16 +43,39 @@ func (db *appdbimpl) loadConversationSummary(convId schemas.ConversationId, user
 			return lastMessage, 0, nil
 		}
 
-		const query = `
-			SELECT COUNT(*)
-			FROM messages
-			WHERE convId = ?
-			  AND senderId != ?
-			  AND status != 'seen'
-			  AND status != 'deleted'
-		`
-		if err := db.c.QueryRow(query, convId, userId).Scan(&unreadCount); err != nil {
+		var convKind string
+		if err := db.c.QueryRow(`SELECT kind FROM conversations WHERE convId = ?`, convId).Scan(&convKind); err != nil {
 			return nil, 0, err
+		}
+
+		if convKind == "group" {
+			const query = `
+				SELECT COUNT(*)
+				FROM messages m
+				WHERE m.convId = ?
+				  AND m.senderId != ?
+				  AND m.status != 'deleted'
+				  AND m.messageId NOT IN (
+					SELECT mr.messageId
+					FROM message_reads mr
+					WHERE mr.userId = ?
+				  )
+			`
+			if err := db.c.QueryRow(query, convId, userId, userId).Scan(&unreadCount); err != nil {
+				return nil, 0, err
+			}
+		} else {
+			const query = `
+				SELECT COUNT(*)
+				FROM messages
+				WHERE convId = ?
+				  AND senderId != ?
+				  AND status != 'seen'
+				  AND status != 'deleted'
+			`
+			if err := db.c.QueryRow(query, convId, userId).Scan(&unreadCount); err != nil {
+				return nil, 0, err
+			}
 		}
 	}
 

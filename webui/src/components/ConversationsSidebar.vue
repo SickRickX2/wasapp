@@ -88,7 +88,7 @@ const emit = defineEmits(['select'])
             </small>
 
             <span
-              v-if="conversation.unreadCount && conversation.unreadCount > 0"
+              v-if="conversation.unreadCount && conversation.unreadCount > 0 && conversation.convId !== selectedConversationId"
               class="badge rounded-pill bg-success flex-shrink-0"
             >
               {{ conversation.unreadCount }}
