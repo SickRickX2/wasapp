@@ -33,6 +33,19 @@ func (db *appdbimpl) AddGroupMembers(convId schemas.ConversationId, userIds []sc
 		if err != nil {
 			return err
 		}
+
+		// Marca come letti tutti i messaggi precedenti per il nuovo partecipante.
+		// Così il badge unread e le spunte blu restano coerenti appena entra nel gruppo.
+		const backfillReadsQuery = `
+			INSERT INTO message_reads (messageId, userId)
+			SELECT messageId, ?
+			FROM messages
+			WHERE convId = ?
+			ON CONFLICT DO NOTHING
+		`
+		if _, err = db.c.Exec(backfillReadsQuery, userId, convId); err != nil {
+			return err
+		}
 	}
 
 	return nil
