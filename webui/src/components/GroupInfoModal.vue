@@ -91,7 +91,7 @@ function close() {
     @click="close"
   >
     <div class="conversation-info-modal" @click.stop>
-      <button type="button" class="btn-close conversation-info-close" aria-label="Close" @click="close"></button>
+      <button type="button" class="btn-close conversation-info-close" aria-label="Close" @click.stop="close"></button>
 
       <input type="file" ref="fileInput" class="d-none" accept="image/*" @change="onFileSelected">
 
@@ -195,8 +195,14 @@ function close() {
 
 .conversation-info-close {
   position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .participants-list {

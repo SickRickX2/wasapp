@@ -33,8 +33,21 @@ const quickEmojis = ['👍', '❤️', '😂', '😯', '😢', '🙏']
 let pollingInterval = null
 let groupMemberSearchTimer = null
 
+// Anti-crash blindatura: traccia quali messaggi sono già stati processati
+const locallyMarkedAsSeen = new Set()
+
 const selectedConversation = computed(() => {
   return conversations.value.find((c) => c.convId === selectedConversationId.value) ?? null
+})
+
+const sortedConversationsList = computed(() => {
+  if (!conversations.value) return []
+
+  return [...conversations.value].sort((a, b) => {
+    const timeA = a?.lastMessage?.time ? new Date(a.lastMessage.time).getTime() : 0
+    const timeB = b?.lastMessage?.time ? new Date(b.lastMessage.time).getTime() : 0
+    return timeB - timeA
+  })
 })
 
 function formatDayLabel(dateLike) {
@@ -46,12 +59,16 @@ function formatDayLabel(dateLike) {
   return `${day}/${month}/${year}`
 }
 
-function formatMessageTime(dateLike) {
+function formatTime(dateLike) {
   const d = new Date(dateLike)
   if (Number.isNaN(d.getTime())) return ''
   const hours = String(d.getHours()).padStart(2, '0')
   const minutes = String(d.getMinutes()).padStart(2, '0')
   return `${hours}:${minutes}`
+}
+
+function formatMessageTime(dateLike) {
+  return formatTime(dateLike)
 }
 
 const aggregateReactions = (reactions) => {
@@ -506,14 +523,44 @@ async function loadMessages(conversationId, options = {}) {
   }
 }
 
+const isMessageReadByAll = (message) => {
+  if (!selectedConversation.value) return false
+
+  // Se è una chat privata, basta lo status standard
+  if (selectedConversation.value.type !== 'group') {
+    return message.status === 'seen'
+  }
+
+  // SE È UN GRUPPO:
+  // Se il backend fornisce un array (es. message.readBy), calcola la lunghezza
+  if (Array.isArray(message.readBy)) {
+    const expectedReaders = (selectedConversation.value.participants?.length || 2) - 1
+    return message.readBy.length >= expectedReaders
+  }
+
+  // Se il backend fornisce solo uno status globale, ci fidiamo di quello
+  return message.status === 'seen'
+}
+
 async function markUnreadMessagesAsSeen(messages) {
-  const unreadMessages = messages.filter((m) => m.sender !== state.userId && m.status !== 'seen')
+  if (!messages || messages.length === 0) return
+
+  // Filtra solo i messaggi: non miei, non ancora letti, e MAI processati prima
+  const unreadMessages = messages.filter(m => {
+    const isMine = m.sender === state.userId
+    const isUnread = m.status !== 'seen'
+    const notProcessed = !locallyMarkedAsSeen.has(m.messageId)
+    return !isMine && isUnread && notProcessed
+  })
 
   for (const msg of unreadMessages) {
+    // Aggiungi SUBITO al set per prevenire loop causati dal polling veloce
+    locallyMarkedAsSeen.add(msg.messageId)
     try {
       await axios.put(`/conversations/${selectedConversationId.value}/messages/${msg.messageId}/seen`)
-      msg.status = 'seen'
     } catch (error) {
+      // Se fallisce, rimuovi dal set per riprovare al prossimo giro
+      locallyMarkedAsSeen.delete(msg.messageId)
       console.error('Error marking message as seen', error)
     }
   }
@@ -825,13 +872,14 @@ onUnmounted(() => {
 <template>
   <div class="d-flex h-100 overflow-hidden bg-white" style="min-height: 0;">
     <ConversationsSidebar
-      :conversations="conversations"
+      :conversations="sortedConversationsList"
       :selectedConversationId="selectedConversationId"
       :userId="state.userId"
       :getChatTitle="getChatTitle"
       :getOtherParticipantId="getOtherParticipantId"
       :getUsernameFromId="getUsernameFromId"
       :getConversationAvatarUrl="getConversationAvatarUrl"
+      :formatTime="formatTime"
       @select="selectConversation"
     />
 
@@ -883,7 +931,8 @@ onUnmounted(() => {
                 :aggregateReactions="aggregateReactions"
                 :formatMessageTime="formatMessageTime"
                 :getReplyMessageContent="getReplyMessageContent"
-                  :getReplyFromSender="getReplyFromSender"
+                :getReplyFromSender="getReplyFromSender"
+                :isMessageReadByAll="isMessageReadByAll"
                 @open-image-preview="openImagePreview"
                 @toggle-menu="toggleMessageMenu"
                 @toggle-reaction="toggleReaction"

@@ -52,6 +52,11 @@ func (db *appdbimpl) GetConversation(convId schemas.ConversationId) (any, error)
 		return nil, err
 	}
 
+	lastMessage, unreadCount, err := db.loadConversationSummary(convId, "")
+	if err != nil {
+		return nil, err
+	}
+
 	// costruiamo la risposta in base alla conv
 	if kind == groupType {
 		// group
@@ -59,7 +64,8 @@ func (db *appdbimpl) GetConversation(convId schemas.ConversationId) (any, error)
 			ConvId:       convId,
 			Type:         "group",
 			Participants: participants,
-			UnreadCount:  0, // TODO: da implementare in seguito
+			UnreadCount:  unreadCount,
+			LastMessage:  lastMessage,
 		}
 		if groupName.Valid {
 			group.GroupName = groupName.String
@@ -78,7 +84,8 @@ func (db *appdbimpl) GetConversation(convId schemas.ConversationId) (any, error)
 			ConvId:       convId,
 			Type:         "private",
 			Participants: participants,
-			UnreadCount:  0, // TODO: da implementare in seguito
+			UnreadCount:  unreadCount,
+			LastMessage:  lastMessage,
 		}
 		return privateChat, nil
 	}

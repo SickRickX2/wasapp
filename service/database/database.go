@@ -65,7 +65,7 @@ type AppDatabase interface {
 	SetGroupName(convId schemas.ConversationId, newName string) error
 	GetMessage(messageId schemas.MessageId) (schemas.Message, error)
 	IsMessageInConversation(convId schemas.ConversationId, messageId schemas.MessageId) (bool, error)
-	MarkAsSeen(convId schemas.ConversationId, messageId schemas.MessageId, userId schemas.UserId) error
+	MarkAsSeen(convId schemas.ConversationId, messageId schemas.MessageId, userId schemas.UserId) (schemas.Message, error)
 	ReactToMessage(messageId schemas.MessageId, userId schemas.UserId, emoji string) error
 	UnreactToMessage(messageId schemas.MessageId, userId schemas.UserId) error
 
@@ -197,6 +197,28 @@ func New(db *sql.DB) (AppDatabase, error) {
 		}
 	} else if err != nil {
 		return nil, fmt.Errorf("error querying 'media' table existence: %w", err)
+	}
+	// --------------------------------------------------------
+	// TABLE MESSAGE_READS
+	err = db.QueryRow(`SELECT name FROM sqlite_master WHERE type='table' AND name='message_reads';`).Scan(&tableName)
+	if errors.Is(err, sql.ErrNoRows) {
+		sqlStmt := `
+            CREATE TABLE message_reads (
+                messageId TEXT NOT NULL,
+                userId TEXT NOT NULL,
+                readAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+                PRIMARY KEY (messageId, userId),
+                FOREIGN KEY (messageId) REFERENCES messages(messageId) ON DELETE CASCADE,
+                FOREIGN KEY (userId) REFERENCES users(userId) ON DELETE CASCADE
+            );
+        `
+		_, err = db.Exec(sqlStmt)
+		if err != nil {
+			return nil, fmt.Errorf("error creating 'message_reads' table: %w", err)
+		}
+	} else if err != nil {
+		return nil, fmt.Errorf("error querying 'message_reads' table existence: %w", err)
 	}
 	// --------------------------------------------------------
 	// TABLE REACTIONS

@@ -40,6 +40,10 @@ defineProps({
     type: Function,
     required: true,
   },
+  isMessageReadByAll: {
+    type: Function,
+    required: true,
+  },
 })
 
 const emit = defineEmits([
@@ -61,13 +65,18 @@ const emit = defineEmits([
     <div
       class="p-2 rounded text-break shadow-sm message-bubble"
       :class="{
-        'bg-primary text-white': message.sender === userId && message.status !== 'deleted',
-        'bg-white text-dark': message.sender !== userId && message.status !== 'deleted',
-        'bg-light fst-italic': message.status === 'deleted'
+        'bg-primary text-white': message.sender === userId && message.status !== 'deleted' && message.kind !== 'system_leave_group',
+        'bg-white text-dark': message.sender !== userId && message.status !== 'deleted' && message.kind !== 'system_leave_group',
+        'bg-light fst-italic': message.status === 'deleted',
+        'bg-transparent text-muted text-center': message.kind === 'system_leave_group'
       }"
-      :style="message.status === 'deleted' ? 'border: 2px dashed #adb5bd;' : ''"
+      :style="message.status === 'deleted' ? 'border: 2px dashed #adb5bd;' : (message.kind === 'system_leave_group' ? 'border: none; box-shadow: none;' : '')"
     >
-      <div v-if="message.status !== 'deleted'">
+      <div v-if="message.kind === 'system_leave_group'" class="d-flex align-items-center justify-content-center gap-2 small">
+        <span class="material-symbols-outlined" style="font-size: 16px;">logout</span>
+        <span>{{ message.text }} left</span>
+      </div>
+      <div v-else-if="message.status !== 'deleted'">
         <div v-if="message.kind === 'forwarded'" class="d-flex align-items-center gap-1 mb-1 small text-muted">
           <span class="material-symbols-outlined" style="font-size: 14px;">forward</span>
           <span>Forwarded</span>
@@ -108,7 +117,7 @@ const emit = defineEmits([
         This message has been deleted
       </div>
 
-      <div v-if="message.status !== 'deleted'" class="d-flex align-items-center justify-content-between mt-1 gap-2">
+      <div v-if="message.status !== 'deleted' && message.kind !== 'system_leave_group'" class="d-flex align-items-center justify-content-between mt-1 gap-2">
         <div
           class="d-flex align-items-center gap-1 small"
           :class="message.sender === userId ? 'text-white-50' : 'text-muted'"
@@ -116,7 +125,7 @@ const emit = defineEmits([
           {{ formatMessageTime(message.time) }}
           <span v-if="message.sender === userId && message.status !== 'deleted'" class="ms-1">
             <span
-              v-if="message.status === 'seen'"
+              v-if="isMessageReadByAll(message)"
               class="material-symbols-outlined text-info"
               style="font-size: 16px; vertical-align: text-bottom;"
             >

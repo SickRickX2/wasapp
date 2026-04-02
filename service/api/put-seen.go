@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -33,7 +34,7 @@ func (rt *_router) markAsSeen(w http.ResponseWriter, r *http.Request, ps httprou
 	}
 
 	// aggiorna il DB
-	err = rt.db.MarkAsSeen(convId, messageId, userId)
+	updatedMsg, err := rt.db.MarkAsSeen(convId, messageId, userId)
 	if err != nil {
 		if err.Error() == "message not found" {
 			http.Error(w, "Message not found", http.StatusNotFound)
@@ -47,8 +48,7 @@ func (rt *_router) markAsSeen(w http.ResponseWriter, r *http.Request, ps httprou
 	// risposta
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
-	if _, err := w.Write([]byte(`{"success": true}`)); err != nil {
+	if err := json.NewEncoder(w).Encode(updatedMsg); err != nil {
 		rt.baseLogger.WithError(err).Error("failed to write response in markAsSeen")
 	}
 }

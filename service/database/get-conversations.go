@@ -78,7 +78,12 @@ func (db *appdbimpl) GetConversations(userId schemas.UserId) ([]schemas.Conversa
 		c.Participants = participants
 		c.ParticipantNames = participantNames
 
-		// TODO: prendere l'ultimo messaggio e contare i mesaggi non letti
+		lastMessage, unreadCount, err := db.loadConversationSummary(c.ConvId, userId)
+		if err != nil {
+			return nil, err
+		}
+		c.LastMessage = lastMessage
+		c.UnreadCount = unreadCount
 		convs = append(convs, c)
 	}
 
