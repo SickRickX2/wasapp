@@ -19,6 +19,7 @@ const groupPhotoCache = reactive({})
 const fileInput = ref(null)
 const isUploadingMedia = ref(false)
 const isLoadingMessages = ref(false)
+const isLoadingMoreMessages = ref(false)
 const previewImageUrl = ref('')
 const showConversationInfoModal = ref(false)
 const openMessageMenuId = ref(null)
@@ -28,6 +29,8 @@ const isAddingGroupMember = ref(false)
 const selectedMediaFile = ref(null)
 const selectedMediaPreviewUrl = ref('')
 const messagesContainer = ref(null)
+const currentOffset = ref(0)
+const hasMoreMessages = ref(true)
 const messageToForward = ref(null)
 const messageToReply = ref(null)
 const quickEmojis = ['👍', '❤️', '😂', '😯', '😢', '🙏']
@@ -198,6 +201,7 @@ const isNearBottom = () => {
 watch(
   () => currentMessages.value?.length,
   (newLength, oldLength) => {
+    if (isLoadingMoreMessages.value) return
     if (newLength > (oldLength || 0)) {
       scrollToBottom()
     }
@@ -510,15 +514,24 @@ async function loadParticipantPfps(conversationsList) {
 
 async function loadMessages(conversationId, options = {}) {
   const { forceScroll = false, isPolling = false, showLoading = false } = options
+  
+  // Se siamo in polling E l'utente ha già caricato messaggi precedenti,
+  // non ricaricare tutto (mantieni i messaggi già caricati)
+  if (isPolling && currentOffset.value > 0) {
+    console.log('Skipping reload during polling because user has loaded previous messages')
+    return
+  }
+  
   if (showLoading && !isPolling) {
     isLoadingMessages.value = true
   }
   try {
     const shouldStickToBottom = forceScroll || isNearBottom() || currentMessages.value.length === 0
-    const response = await axios.get(`/conversations/${conversationId}/messages`)
+    const response = await axios.get(`/conversations/${conversationId}/messages?limit=20&offset=0`)
     const data = response.data
     if (Array.isArray(data?.messages)) {
       currentMessages.value = data.messages
+      hasMoreMessages.value = data.messages.length >= 20
       const senderIds = new Set(data.messages.map((m) => m?.sender).filter(Boolean))
       await Promise.all(Array.from(senderIds).map((id) => resolveUsernameById(id)))
       if (shouldStickToBottom) {
@@ -528,6 +541,7 @@ async function loadMessages(conversationId, options = {}) {
       return
     }
     currentMessages.value = Array.isArray(data) ? data : []
+    hasMoreMessages.value = currentMessages.value.length >= 20
     const senderIds = new Set(currentMessages.value.map((m) => m?.sender).filter(Boolean))
     await Promise.all(Array.from(senderIds).map((id) => resolveUsernameById(id)))
     if (shouldStickToBottom) {
@@ -540,6 +554,47 @@ async function loadMessages(conversationId, options = {}) {
     if (showLoading && !isPolling) {
       isLoadingMessages.value = false
     }
+  }
+}
+
+async function loadMoreMessages() {
+  if (!selectedConversationId.value || !hasMoreMessages.value || isLoadingMoreMessages.value) return
+
+  isLoadingMoreMessages.value = true
+  try {
+    const nextOffset = currentOffset.value + 20
+    console.log('Loading more messages with offset:', nextOffset)
+    const response = await axios.get(`/conversations/${selectedConversationId.value}/messages?limit=20&offset=${nextOffset}`)
+    console.log('Response data:', response.data)
+    const incoming = Array.isArray(response.data?.messages)
+      ? response.data.messages
+      : (Array.isArray(response.data) ? response.data : [])
+    
+    console.log('Incoming messages:', incoming.length)
+
+    if (incoming.length < 20) {
+      hasMoreMessages.value = false
+    }
+
+    // Aggiungi alla FINE, così dopo il reverse appariranno SOPRA (messaggi più vecchi in alto)
+    currentMessages.value = [...currentMessages.value, ...incoming]
+    currentOffset.value += 20
+
+    const senderIds = new Set(incoming.map((m) => m?.sender).filter(Boolean))
+    await Promise.all(Array.from(senderIds).map((id) => resolveUsernameById(id)))
+
+    // Scroll giù di poco per mostrare ai messaggi nuovi senza perdere il contesto
+    await nextTick()
+    if (messagesContainer.value) {
+      const scrollIncrement = 150 // Scroll di 150px verso il basso per mostrare i nuovi messaggi
+      messagesContainer.value.scrollTop += scrollIncrement
+      console.log('Scrolled down by', scrollIncrement, 'px')
+    }
+  } catch (err) {
+    console.error('Failed to load more messages', err)
+    alert(`Errore nel caricamento: ${err?.response?.status} ${err?.message}`)
+  } finally {
+    isLoadingMoreMessages.value = false
   }
 }
 
@@ -597,6 +652,8 @@ async function syncData() {
 async function selectConversation(id) {
   clearSelectedMedia()
   selectedConversationId.value = id
+  currentOffset.value = 0
+  hasMoreMessages.value = true
   await loadMessages(id, { forceScroll: true, showLoading: true })
   await scrollToBottom()
 }
@@ -937,6 +994,11 @@ onUnmounted(() => {
             </div>
           </div>
           <div v-else>
+            <div v-if="hasMoreMessages" class="text-center my-3">
+              <button @click="loadMoreMessages" class="btn btn-sm btn-outline-primary rounded-pill px-3" :disabled="isLoadingMoreMessages">
+                {{ isLoadingMoreMessages ? 'Caricamento...' : 'Carica messaggi precedenti' }}
+              </button>
+            </div>
             <div
               v-for="item in messageTimeline"
               :key="item.key"

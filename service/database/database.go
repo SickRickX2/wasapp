@@ -50,7 +50,7 @@ type AppDatabase interface {
 	SearchUsers(query string) ([]schemas.User, error)
 	CreateConversation(userA schemas.UserId, userB schemas.UserId) (schemas.PrivateConversation, error)
 	CreateMessage(convId schemas.ConversationId, msg schemas.Message) error
-	GetConversationMessages(convId schemas.ConversationId, limit int, beforeId string) ([]schemas.Message, error)
+	GetConversationMessages(convId schemas.ConversationId, limit int, offset int) ([]schemas.Message, error)
 	DeleteMessage(convId schemas.ConversationId, messageId schemas.MessageId, userId schemas.UserId) (schemas.Message, error)
 	CreateGroup(creator schemas.UserId, name string, participants []schemas.UserId) (schemas.Group, error)
 	AddGroupMembers(convId schemas.ConversationId, userIds []schemas.UserId) error

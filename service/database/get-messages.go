@@ -6,22 +6,18 @@ import (
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 )
 
-func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limit int, beforeId string) ([]schemas.Message, error) {
+func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limit int, offset int) ([]schemas.Message, error) {
 	var messages []schemas.Message
 
-	// costruisce la query base
-	query := `SELECT messageId, senderId, text, mediaId, replyToId, sentAt, kind, status FROM messages WHERE convId = ?`
-	args := []interface{}{convId}
-
-	// prendiamo i messaggi prima di beforeid
-	if beforeId != "" {
-		query += ` AND sentAt < (SELECT sentAt FROM messages WHERE messageId = ?)`
-		args = append(args, beforeId)
-	}
-
-	// ordiniamo
-	query += ` ORDER BY sentAt DESC LIMIT ?`
-	args = append(args, limit)
+	// paginazione a blocchi: ultimi messaggi prima (DESC), con LIMIT/OFFSET
+	query := `
+		SELECT messageId, senderId, text, mediaId, replyToId, sentAt, kind, status
+		FROM messages
+		WHERE convId = ?
+		ORDER BY sentAt DESC
+		LIMIT ? OFFSET ?
+	`
+	args := []interface{}{convId, limit, offset}
 
 	rows, err := db.c.Query(query, args...)
 	if err != nil {

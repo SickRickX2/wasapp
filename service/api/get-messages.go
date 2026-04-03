@@ -40,10 +40,17 @@ func (rt *_router) getMessages(w http.ResponseWriter, r *http.Request, ps httpro
 			limit = parsedLimit
 		}
 	}
-	beforeId := r.URL.Query().Get("beforeId")
+
+	offset := 0
+	if o := r.URL.Query().Get("offset"); o != "" {
+		parsedOffset, err := strconv.Atoi(o)
+		if err == nil && parsedOffset >= 0 {
+			offset = parsedOffset
+		}
+	}
 
 	// chiama il db per i messaggi
-	msgs, err := rt.db.GetConversationMessages(convId, limit, beforeId)
+	msgs, err := rt.db.GetConversationMessages(convId, limit, offset)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error retrieving messages")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
