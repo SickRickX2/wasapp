@@ -47,6 +47,11 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
+	if len(req.Text) > 150 {
+		http.Error(w, "Il messaggio non può superare i 150 caratteri", http.StatusBadRequest)
+		return
+	}
+
 	mediaId := req.MediaId
 	if req.Media != nil {
 		if req.Media.URL == "" {
