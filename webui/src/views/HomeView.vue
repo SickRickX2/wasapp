@@ -636,6 +636,7 @@ async function sendMessage() {
   if (!selectedConversationId.value) return
   const text = newMessageText.value.trim()
   const hasMedia = !!selectedMediaFile.value
+  if (text.length > 150) return
   if (text.length === 0 && !hasMedia) return
 
   isUploadingMedia.value = true
@@ -991,8 +992,13 @@ onUnmounted(() => {
             <button class="btn btn-outline-secondary d-flex align-items-center" type="button" @click="triggerFileInput">
               <span class="material-symbols-outlined">add_photo_alternate</span>
             </button>
-            <input type="text" class="form-control" placeholder="Type a message..." v-model="newMessageText" @keyup.enter="sendMessage">
+            <input type="text" class="form-control" placeholder="Type a message..." v-model="newMessageText" maxlength="150" @keyup.enter="sendMessage">
             <button class="btn btn-primary" type="button" @click="sendMessage">Send</button>
+          </div>
+          <div class="d-flex justify-content-end mt-1">
+            <small class="text-muted ms-2" style="font-size: 0.75rem;">
+              {{ newMessageText.length }}/150
+            </small>
           </div>
           <input
             ref="fileInput"
