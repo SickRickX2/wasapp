@@ -910,9 +910,9 @@ onUnmounted(() => {
           <span class="material-symbols-outlined mb-4" style="font-size: 100px; color: #ced4da;">
             forum
           </span>
-          <h2 class="fw-light text-dark mb-3">Benvenuto su WASAText</h2>
+          <h2 class="fw-light text-dark mb-3">Welcome to WASAText</h2>
           <p class="text-muted" style="max-width: 400px; font-size: 0.95rem;">
-            Seleziona una conversazione dalla barra laterale per iniziare a scambiare messaggi, oppure crea una nuova chat o un nuovo gruppo tramite il menu a sinistra.
+            Select a chat or create a new one to start
           </p>
         </div>
       </template>
