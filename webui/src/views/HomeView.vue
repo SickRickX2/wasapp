@@ -18,6 +18,7 @@ const userPfpCache = reactive({})
 const groupPhotoCache = reactive({})
 const fileInput = ref(null)
 const isUploadingMedia = ref(false)
+const isLoadingMessages = ref(false)
 const previewImageUrl = ref('')
 const showConversationInfoModal = ref(false)
 const openMessageMenuId = ref(null)
@@ -180,7 +181,10 @@ const selectedConversationModalParticipants = computed(() => {
 const scrollToBottom = async () => {
   await nextTick()
   if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    messagesContainer.value.scrollTo({
+      top: messagesContainer.value.scrollHeight,
+      behavior: 'smooth',
+    })
   }
 }
 
@@ -190,6 +194,15 @@ const isNearBottom = () => {
   const threshold = 80
   return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
 }
+
+watch(
+  () => currentMessages.value?.length,
+  (newLength, oldLength) => {
+    if (newLength > (oldLength || 0)) {
+      scrollToBottom()
+    }
+  }
+)
 
 const getOtherParticipantId = (conv) => conv?.participants?.find((id) => id !== state.userId)
 
@@ -496,7 +509,10 @@ async function loadParticipantPfps(conversationsList) {
 }
 
 async function loadMessages(conversationId, options = {}) {
-  const { forceScroll = false } = options
+  const { forceScroll = false, isPolling = false, showLoading = false } = options
+  if (showLoading && !isPolling) {
+    isLoadingMessages.value = true
+  }
   try {
     const shouldStickToBottom = forceScroll || isNearBottom() || currentMessages.value.length === 0
     const response = await axios.get(`/conversations/${conversationId}/messages`)
@@ -520,6 +536,10 @@ async function loadMessages(conversationId, options = {}) {
     await markUnreadMessagesAsSeen(currentMessages.value)
   } catch (err) {
     console.error('Failed to load messages', err)
+  } finally {
+    if (showLoading && !isPolling) {
+      isLoadingMessages.value = false
+    }
   }
 }
 
@@ -569,7 +589,7 @@ async function markUnreadMessagesAsSeen(messages) {
 async function syncData() {
   await loadConversations()
   if (selectedConversationId.value) {
-    await loadMessages(selectedConversationId.value)
+    await loadMessages(selectedConversationId.value, { isPolling: true })
     await markUnreadMessagesAsSeen(currentMessages.value)
   }
 }
@@ -577,7 +597,8 @@ async function syncData() {
 async function selectConversation(id) {
   clearSelectedMedia()
   selectedConversationId.value = id
-  await loadMessages(id, { forceScroll: true })
+  await loadMessages(id, { forceScroll: true, showLoading: true })
+  await scrollToBottom()
 }
 
 function triggerFileInput() {
@@ -885,8 +906,14 @@ onUnmounted(() => {
 
     <section class="d-flex flex-column h-100 min-w-0 flex-grow-1" style="min-height: 0;">
       <template v-if="!selectedConversationId">
-        <div class="d-flex flex-grow-1 align-items-center justify-content-center text-muted">
-          Select a chat to start
+        <div class="d-flex flex-column h-100 justify-content-center align-items-center bg-light text-center px-4" style="border-radius: 0.5rem;">
+          <span class="material-symbols-outlined mb-4" style="font-size: 100px; color: #ced4da;">
+            forum
+          </span>
+          <h2 class="fw-light text-dark mb-3">Benvenuto su WASAText</h2>
+          <p class="text-muted" style="max-width: 400px; font-size: 0.95rem;">
+            Seleziona una conversazione dalla barra laterale per iniziare a scambiare messaggi, oppure crea una nuova chat o un nuovo gruppo tramite il menu a sinistra.
+          </p>
         </div>
       </template>
 
@@ -902,45 +929,52 @@ onUnmounted(() => {
           @open-info="openConversationInfoModal"
         />
 
-        <div ref="messagesContainer" class="flex-grow-1 overflow-y-auto p-3" style="min-height: 0;">
-          <div
-            v-for="item in messageTimeline"
-            :key="item.key"
-          >
-            <div v-if="item.itemType === 'day-separator'" class="d-flex justify-content-center my-3">
-              <span class="date-separator-badge">{{ item.label }}</span>
+        <div ref="messagesContainer" class="chat-messages-area flex-grow-1 overflow-y-auto p-3" style="min-height: 0;">
+          <div v-if="isLoadingMessages" class="d-flex h-100 justify-content-center align-items-center">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+              <span class="visually-hidden">Caricamento messaggi...</span>
             </div>
-
+          </div>
+          <div v-else>
             <div
-              v-else-if="item.itemType === 'message' && item.message.kind?.startsWith('system_')"
-              class="d-flex justify-content-center w-100 mb-2"
+              v-for="item in messageTimeline"
+              :key="item.key"
             >
-              <span class="system-message-chip">{{ renderSystemMessage(item.message) }}</span>
-            </div>
+              <div v-if="item.itemType === 'day-separator'" class="d-flex justify-content-center my-3">
+                <span class="date-separator-badge">{{ item.label }}</span>
+              </div>
 
-            <div
-              v-else-if="item.itemType === 'message'"
-            >
-              <MessageBubble
-                :message="item.message"
-                :userId="state.userId"
-                :isMenuOpen="openMessageMenuId === item.message.messageId"
-                :quickEmojis="quickEmojis"
-                :getSenderLabel="getSenderLabel"
-                :getMediaUrl="getMediaUrl"
-                :aggregateReactions="aggregateReactions"
-                :formatMessageTime="formatMessageTime"
-                :getReplyMessageContent="getReplyMessageContent"
-                :getReplyFromSender="getReplyFromSender"
-                :isMessageReadByAll="isMessageReadByAll"
-                @open-image-preview="openImagePreview"
-                @toggle-menu="toggleMessageMenu"
-                @toggle-reaction="toggleReaction"
-                @forward-message="forwardMessage"
-                @reply-message="prepareReply"
-                @delete-message="deleteMessage"
-                @close-menu="closeMessageMenu"
-              />
+              <div
+                v-else-if="item.itemType === 'message' && item.message.kind?.startsWith('system_')"
+                class="d-flex justify-content-center w-100 mb-2"
+              >
+                <span class="system-message-chip">{{ renderSystemMessage(item.message) }}</span>
+              </div>
+
+              <div
+                v-else-if="item.itemType === 'message'"
+              >
+                <MessageBubble
+                  :message="item.message"
+                  :userId="state.userId"
+                  :isMenuOpen="openMessageMenuId === item.message.messageId"
+                  :quickEmojis="quickEmojis"
+                  :getSenderLabel="getSenderLabel"
+                  :getMediaUrl="getMediaUrl"
+                  :aggregateReactions="aggregateReactions"
+                  :formatMessageTime="formatMessageTime"
+                  :getReplyMessageContent="getReplyMessageContent"
+                  :getReplyFromSender="getReplyFromSender"
+                  :isMessageReadByAll="isMessageReadByAll"
+                  @open-image-preview="openImagePreview"
+                  @toggle-menu="toggleMessageMenu"
+                  @toggle-reaction="toggleReaction"
+                  @forward-message="forwardMessage"
+                  @reply-message="prepareReply"
+                  @delete-message="deleteMessage"
+                  @close-menu="closeMessageMenu"
+                />
+              </div>
             </div>
           </div>
         </div>
