@@ -98,12 +98,12 @@ async function removeProfilePicture() {
 <template>
   <div class="d-flex flex-column vh-100 bg-light overflow-hidden">
     <template v-if="state.userId">
-      <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
-        <span class="navbar-brand mb-0 h1">WASAText</span>
+      <nav class="navbar navbar-expand-lg text-white shadow-sm px-3" style="background-color: #059669;">
+        <span class="navbar-brand mb-0 h1 text-white fw-bold">WASAText</span>
         <div class="ms-auto d-flex align-items-center gap-3">
           <div class="d-flex align-items-center gap-2">
             <UserAvatar :name="state.userId" :displayName="state.userName" :realImageUrl="state.profilePictureUrl" :size="32" />
-            <small class="text-white-50">{{ state.userName || 'User' }}</small>
+            <small class="text-white">{{ state.userName || 'User' }}</small>
           </div>
           <button 
             class="btn btn-outline-light btn-sm" 
@@ -120,13 +120,13 @@ async function removeProfilePicture() {
 
       <div class="container-fluid flex-grow-1 overflow-hidden" style="min-height: 0;">
         <div class="row h-100 gx-0" style="min-height: 0;">
-          <aside class="col-12 col-md-3 col-lg-2 bg-white border-end h-100 p-3">
+          <aside class="col-12 col-md-3 col-lg-2 bg-light border-end h-100 p-3" style="background-color: #f0f2f5;">
             <div class="list-group list-group-flush">
-              <RouterLink to="/" class="list-group-item list-group-item-action">Home</RouterLink>
-              <button type="button" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#newChatModal">
+              <div class="list-group-item bg-transparent border-bottom fw-semibold text-muted" aria-disabled="true">Home</div>
+              <button type="button" class="list-group-item list-group-item-action bg-transparent border-bottom" data-bs-toggle="modal" data-bs-target="#newChatModal">
                 <span class="material-symbols-outlined align-middle me-2" style="font-size: 20px;">chat</span> New Chat
               </button>
-              <button type="button" class="list-group-item list-group-item-action" data-bs-toggle="modal" data-bs-target="#newGroupModal">
+              <button type="button" class="list-group-item list-group-item-action bg-transparent border-bottom" data-bs-toggle="modal" data-bs-target="#newGroupModal">
                 <span class="material-symbols-outlined align-middle me-2" style="font-size: 20px;">group_add</span> New Group
               </button>
             </div>
@@ -190,6 +190,31 @@ async function removeProfilePicture() {
 </template>
 
 <style>
+:root,
+[data-bs-theme='light'] {
+  /* Il nuovo verde smeraldo */
+  --bs-primary: #10b981;
+  /* RGB necessario per i focus ring e le ombreggiature dei bottoni di Bootstrap */
+  --bs-primary-rgb: 16, 185, 129;
+
+  /* (Opzionale) Adatta anche il colore del testo sui bottoni primary per contrasto */
+  --bs-primary-text-emphasis: #053d2b;
+  --bs-primary-bg-subtle: #d1f1e6;
+  --bs-primary-border-subtle: #a3e3cd;
+}
+
+/* Forza il colore di background e bordo dei bottoni primari */
+.btn-primary {
+  --bs-btn-bg: #10b981;
+  --bs-btn-border-color: #10b981;
+  --bs-btn-hover-bg: #0e9f6e;
+  --bs-btn-hover-border-color: #0d9466;
+  --bs-btn-active-bg: #0d9466;
+  --bs-btn-active-border-color: #0c8a5f;
+  --bs-btn-disabled-bg: #10b981;
+  --bs-btn-disabled-border-color: #10b981;
+}
+
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;

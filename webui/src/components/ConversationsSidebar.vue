@@ -106,4 +106,15 @@ const emit = defineEmits(['select'])
   min-width: 260px;
   max-width: 420px;
 }
+
+.list-group-item.active {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+
+.list-group-item.active:hover,
+.list-group-item.active:focus {
+  background-color: #0e9f6e;
+  border-color: #0e9f6e;
+}
 </style>

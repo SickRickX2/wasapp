@@ -63,7 +63,7 @@ const emit = defineEmits([
     :class="message.sender === userId ? 'justify-content-end' : 'justify-content-start'"
   >
     <div
-      class="p-2 rounded text-break shadow-sm message-bubble"
+      class="p-2 px-3 rounded-4 text-break shadow-sm message-bubble"
       :class="{
         'bg-primary text-white': message.sender === userId && message.status !== 'deleted' && message.kind !== 'system_leave_group',
         'bg-white text-dark': message.sender !== userId && message.status !== 'deleted' && message.kind !== 'system_leave_group',
@@ -133,7 +133,7 @@ const emit = defineEmits([
             </span>
             <span
               v-else
-              class="material-symbols-outlined text-muted"
+              :class="message.sender === userId ? 'material-symbols-outlined text-white-50' : 'material-symbols-outlined text-muted'"
               style="font-size: 16px; vertical-align: text-bottom;"
             >
               check

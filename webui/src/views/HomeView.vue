@@ -929,7 +929,7 @@ onUnmounted(() => {
           @open-info="openConversationInfoModal"
         />
 
-        <div ref="messagesContainer" class="chat-messages-area flex-grow-1 overflow-y-auto p-3" style="min-height: 0;">
+        <div ref="messagesContainer" class="chat-messages-area flex-grow-1 overflow-y-auto p-3" style="min-height: 0; background-color: #efeae2;">
           <div v-if="isLoadingMessages" class="d-flex h-100 justify-content-center align-items-center">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
               <span class="visually-hidden">Caricamento messaggi...</span>
