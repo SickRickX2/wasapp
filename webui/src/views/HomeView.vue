@@ -1007,13 +1007,13 @@ onUnmounted(() => {
         <div ref="messagesContainer" class="chat-messages-area flex-grow-1 overflow-y-auto p-3" style="min-height: 0; background-color: #efeae2;">
           <div v-if="isLoadingMessages" class="d-flex h-100 justify-content-center align-items-center">
             <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-              <span class="visually-hidden">Caricamento messaggi...</span>
+              <span class="visually-hidden">Loading messages...</span>
             </div>
           </div>
           <div v-else>
             <div v-if="hasMoreMessages" class="text-center my-3">
               <button @click="loadMoreMessages" class="btn btn-sm btn-outline-primary rounded-pill px-3" :disabled="isLoadingMoreMessages">
-                {{ isLoadingMoreMessages ? 'Caricamento...' : 'Carica messaggi precedenti' }}
+                {{ isLoadingMoreMessages ? 'Loading...' : 'Load previous messages' }}
               </button>
             </div>
             <div
