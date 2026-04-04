@@ -515,13 +515,6 @@ async function loadParticipantPfps(conversationsList) {
 async function loadMessages(conversationId, options = {}) {
   const { forceScroll = false, isPolling = false, showLoading = false } = options
   
-  // Se siamo in polling E l'utente ha già caricato messaggi precedenti,
-  // non ricaricare tutto (mantieni i messaggi già caricati)
-  if (isPolling && currentOffset.value > 0) {
-    console.log('Skipping reload during polling because user has loaded previous messages')
-    return
-  }
-  
   if (showLoading && !isPolling) {
     isLoadingMessages.value = true
   }
@@ -644,7 +637,31 @@ async function markUnreadMessagesAsSeen(messages) {
 async function syncData() {
   await loadConversations()
   if (selectedConversationId.value) {
-    await loadMessages(selectedConversationId.value, { isPolling: true })
+    // Se l'utente ha caricato messaggi precedenti, controlla solo i nuovi (offset=0)
+    if (currentOffset.value > 0) {
+      try {
+        const response = await axios.get(`/conversations/${selectedConversationId.value}/messages?limit=20&offset=0`)
+        const latestMessages = Array.isArray(response.data?.messages) ? response.data.messages : (Array.isArray(response.data) ? response.data : [])
+        
+        if (latestMessages.length > 0) {
+          // Prendi solo i messaggi che NON sono già nell'array
+          const existingIds = new Set(currentMessages.value.map(m => m.messageId))
+          const newMessages = latestMessages.filter(m => !existingIds.has(m.messageId))
+          
+          if (newMessages.length > 0) {
+            console.log('Found', newMessages.length, 'new messages during polling')
+            // Aggiungi alla fine e scrolla automaticamente
+            currentMessages.value = [...currentMessages.value, ...newMessages]
+            await scrollToBottom()
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check for new messages during polling', err)
+      }
+    } else {
+      // Carica normalmente se l'utente sta guardando i messaggi recenti
+      await loadMessages(selectedConversationId.value, { isPolling: true })
+    }
     await markUnreadMessagesAsSeen(currentMessages.value)
   }
 }
