@@ -37,6 +37,25 @@ defineProps({
 })
 
 const emit = defineEmits(['select'])
+
+function getConversationLastMessagePreview(conversation) {
+  const lastMessage = conversation?.lastMessage
+  if (!lastMessage) return ''
+
+  if (lastMessage.status === 'deleted') {
+    return 'Deleted message'
+  }
+
+  if (lastMessage.kind === 'system_add_member') {
+    return `${lastMessage.text || 'Someone'} was added`
+  }
+
+  if (lastMessage.kind === 'system_leave_group') {
+    return `${lastMessage.text || 'Someone'} left`
+  }
+
+  return lastMessage.text || (lastMessage.mediaId ? '📷 Image' : '')
+}
 </script>
 
 <template>
@@ -80,11 +99,7 @@ const emit = defineEmits(['select'])
               style="max-width: 85%;"
               :class="{ 'text-white-50': selectedConversationId === conversation.convId }"
             >
-              {{ conversation.lastMessage?.status === 'deleted'
-                ? 'Deleted message'
-                : (conversation.lastMessage?.kind === 'system_leave_group' 
-                  ? `${conversation.lastMessage?.text} left`
-                  : (conversation.lastMessage?.text || (conversation.lastMessage?.mediaId ? '📷 Immagine' : ''))) }}
+              {{ getConversationLastMessagePreview(conversation) }}
             </small>
 
             <span
