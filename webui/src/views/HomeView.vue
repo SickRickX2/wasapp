@@ -5,6 +5,8 @@ import { state } from '../services/state'
 import NewChatModal from '../components/NewChatModal.vue'
 import NewGroupModal from '../components/NewGroupModal.vue'
 import ConversationsSidebar from '../components/ConversationsSidebar.vue'
+import EmptyChatState from '../components/EmptyChatState.vue'
+import MessagesLoadingState from '../components/MessagesLoadingState.vue'
 import ConversationHeader from '../components/ConversationHeader.vue'
 import GroupInfoModal from '../components/GroupInfoModal.vue'
 import MessageBubble from '../components/MessageBubble.vue'
@@ -981,15 +983,7 @@ onUnmounted(() => {
 
     <section class="d-flex flex-column h-100 min-w-0 flex-grow-1" style="min-height: 0;">
       <template v-if="!selectedConversationId">
-        <div class="d-flex flex-column h-100 justify-content-center align-items-center bg-light text-center px-4" style="border-radius: 0.5rem;">
-          <span class="material-symbols-outlined mb-4" style="font-size: 100px; color: #ced4da;">
-            forum
-          </span>
-          <h2 class="fw-light text-dark mb-3">Welcome to WASAText</h2>
-          <p class="text-muted" style="max-width: 400px; font-size: 0.95rem;">
-            Select a chat or create a new one to start
-          </p>
-        </div>
+        <EmptyChatState />
       </template>
 
       <template v-else>
@@ -1005,11 +999,7 @@ onUnmounted(() => {
         />
 
         <div ref="messagesContainer" class="chat-messages-area flex-grow-1 overflow-y-auto p-3" style="min-height: 0; background-color: #efeae2;">
-          <div v-if="isLoadingMessages" class="d-flex h-100 justify-content-center align-items-center">
-            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-              <span class="visually-hidden">Loading messages...</span>
-            </div>
-          </div>
+          <MessagesLoadingState v-if="isLoadingMessages" />
           <div v-else>
             <div v-if="hasMoreMessages" class="text-center my-3">
               <button @click="loadMoreMessages" class="btn btn-sm btn-outline-primary rounded-pill px-3" :disabled="isLoadingMoreMessages">
