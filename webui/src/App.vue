@@ -9,6 +9,9 @@ import UserAvatar from './components/UserAvatar.vue'
 const router = useRouter()
 const profilePictureFileInput = ref(null)
 const isUploadingProfilePicture = ref(false)
+const newUsername = ref('')
+const usernameError = ref('')
+const isUpdatingUsername = ref(false)
 
 function normalizeMediaUrl(url) {
   if (!url) return null
@@ -93,6 +96,32 @@ async function removeProfilePicture() {
     alert('Error removing profile picture')
   }
 }
+
+async function updateUsername() {
+  usernameError.value = ''
+  const trimmed = newUsername.value.trim()
+  if (!trimmed || !state.userId) return
+
+  isUpdatingUsername.value = true
+  try {
+    await axios.put(`/users/${state.userId}/username`, {
+      username: trimmed,
+    })
+
+    state.userName = trimmed
+    localStorage.setItem('userName', trimmed)
+    newUsername.value = ''
+    alert('Username updated successfully!')
+  } catch (error) {
+    if (error?.response && (error.response.status === 409 || error.response.status === 400)) {
+      usernameError.value = 'Unable to change username: this username is already in use.'
+    } else {
+      usernameError.value = 'Error while updating username.'
+    }
+  } finally {
+    isUpdatingUsername.value = false
+  }
+}
 </script>
 
 <template>
@@ -155,6 +184,31 @@ async function removeProfilePicture() {
             <div class="d-block mx-auto mb-3" style="width: fit-content;">
               <UserAvatar :name="state.userId" :displayName="state.userName" :realImageUrl="state.profilePictureUrl" :size="128" />
             </div>
+
+            <div class="mb-3 text-start">
+              <label for="newUsernameInput" class="form-label fw-semibold">New username</label>
+              <div class="input-group">
+                <input
+                  id="newUsernameInput"
+                  v-model="newUsername"
+                  type="text"
+                  class="form-control"
+                  maxlength="16"
+                  placeholder="Type a new username"
+                  @keyup.enter="updateUsername"
+                />
+                <button
+                  class="btn btn-primary"
+                  type="button"
+                  :disabled="isUpdatingUsername || !newUsername.trim()"
+                  @click="updateUsername"
+                >
+                  {{ isUpdatingUsername ? 'Updating...' : 'Update Username' }}
+                </button>
+              </div>
+              <div v-if="usernameError" class="text-danger small mt-1">{{ usernameError }}</div>
+            </div>
+
             <div class="d-flex justify-content-center gap-2">
               <button 
                 class="btn btn-primary btn-sm" 
