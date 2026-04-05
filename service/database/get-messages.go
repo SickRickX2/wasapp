@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+	"sort"
 
 	"github.com/SickRickX2/wasapp/service/api/schemas"
 )
@@ -45,21 +46,40 @@ func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limi
 			m.ReplyToId = &val
 		}
 
-		// prende le reazioni per questo messaggio
-		reacRows, err := db.c.Query(`SELECT userId, emoji FROM message_reactions WHERE messageId = ?`, m.ID)
+		// prende le reazioni per questo messaggio e le raggruppa per emoji
+		reacRows, err := db.c.Query(`
+			SELECT mr.userId, mr.emoji, IFNULL(u.userName, mr.userId)
+			FROM message_reactions mr
+			LEFT JOIN users u ON u.userId = mr.userId
+			WHERE mr.messageId = ?
+			ORDER BY mr.emoji ASC, IFNULL(u.userName, mr.userId) ASC, mr.userId ASC
+		`, m.ID)
 		if err != nil {
 			return nil, err
 		}
 
-		m.Reactions = []schemas.Reaction{}
+		type reactionAccumulator struct {
+			emoji   string
+			users   []string
+			userIds []schemas.UserId
+		}
+		reactionGroups := map[string]*reactionAccumulator{}
 
 		for reacRows.Next() {
-			var r schemas.Reaction
-			if err := reacRows.Scan(&r.UserId, &r.Emoji); err != nil {
+			var userId schemas.UserId
+			var emoji string
+			var userName string
+			if err := reacRows.Scan(&userId, &emoji, &userName); err != nil {
 				reacRows.Close()
 				return nil, err
 			}
-			m.Reactions = append(m.Reactions, r)
+			group, ok := reactionGroups[emoji]
+			if !ok {
+				group = &reactionAccumulator{emoji: emoji}
+				reactionGroups[emoji] = group
+			}
+			group.users = append(group.users, userName)
+			group.userIds = append(group.userIds, userId)
 		}
 
 		if err := reacRows.Err(); err != nil {
@@ -68,6 +88,26 @@ func (db *appdbimpl) GetConversationMessages(convId schemas.ConversationId, limi
 		}
 		reacRows.Close()
 		// -----------------------
+
+		if len(reactionGroups) > 0 {
+			emojis := make([]string, 0, len(reactionGroups))
+			for emoji := range reactionGroups {
+				emojis = append(emojis, emoji)
+			}
+			sort.Strings(emojis)
+
+			m.Reactions = make([]schemas.Reaction, 0, len(emojis))
+			for _, emoji := range emojis {
+				group := reactionGroups[emoji]
+				m.Reactions = append(m.Reactions, schemas.Reaction{
+					Emoji:   group.emoji,
+					Users:   group.users,
+					UserIds: group.userIds,
+				})
+			}
+		} else {
+			m.Reactions = []schemas.Reaction{}
+		}
 
 		messages = append(messages, m)
 	}

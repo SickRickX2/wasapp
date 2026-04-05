@@ -102,7 +102,7 @@ const emit = defineEmits([
             v-for="agg in aggregateReactions(message.reactions)"
             :key="agg.emoji"
             class="badge bg-light text-dark border shadow-sm rounded-pill d-flex align-items-center gap-1 px-2 py-1"
-            :title="'Reazioni da: ' + agg.users.join(', ')"
+            :title="agg.users.join(', ')"
           >
             <span style="font-size: 0.9rem;">{{ agg.emoji }}</span>
             <span v-if="agg.count > 1" class="text-muted fw-bold" style="font-size: 0.75rem;">

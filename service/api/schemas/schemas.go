@@ -42,8 +42,9 @@ type Media struct {
 
 // /schemas/Reaction
 type Reaction struct {
-	UserId UserId `json:"userId"`
-	Emoji  string `json:"emoji"`
+	Emoji   string   `json:"emoji"`
+	Users   []string `json:"users"`
+	UserIds []UserId `json:"userIds,omitempty"`
 }
 
 // /schemas/Message

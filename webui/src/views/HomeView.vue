@@ -79,13 +79,24 @@ function formatMessageTime(dateLike) {
 
 const aggregateReactions = (reactions) => {
   if (!reactions || reactions.length === 0) return []
+
+  if (Array.isArray(reactions) && reactions.some((r) => Array.isArray(r?.users))) {
+    return reactions.map((r) => ({
+      emoji: r.emoji,
+      count: Array.isArray(r.users) ? r.users.length : 0,
+      users: Array.isArray(r.users) ? r.users : [],
+      userIds: Array.isArray(r.userIds) ? r.userIds : [],
+    }))
+  }
+
   const counts = {}
   reactions.forEach((r) => {
     if (!counts[r.emoji]) {
-      counts[r.emoji] = { emoji: r.emoji, count: 0, users: [] }
+      counts[r.emoji] = { emoji: r.emoji, count: 0, users: [], userIds: [] }
     }
     counts[r.emoji].count++
     counts[r.emoji].users.push(r.userId)
+    counts[r.emoji].userIds.push(r.userId)
   })
   return Object.values(counts)
 }
@@ -773,26 +784,77 @@ async function sendMessage() {
 async function toggleReaction(message, emoji) {
   if (!selectedConversationId.value || !message?.messageId || !emoji) return
 
-  // 1. Trova se l'utente ha già reagito
-  const existingReactionIndex = message.reactions?.findIndex((r) => r.userId === state.userId)
-  const isRemoving = existingReactionIndex !== -1 && message.reactions[existingReactionIndex].emoji === emoji
+  const getUserIds = (reaction) => Array.isArray(reaction?.userIds)
+    ? reaction.userIds
+    : reaction?.userId
+      ? [reaction.userId]
+      : []
 
-  // 2. Clona lo stato precedente in caso di errore (Backup)
-  const backupReactions = [...(message.reactions || [])]
+  const getUsers = (reaction) => Array.isArray(reaction?.users) ? reaction.users : []
 
-  // 3. AGGIORNAMENTO OTTIMISTICO (Istantaneo sulla UI)
+  const cloneReactions = (reactions) => (Array.isArray(reactions) ? reactions.map((reaction) => ({
+    emoji: reaction.emoji,
+    users: getUsers(reaction),
+    userIds: getUserIds(reaction),
+  })) : [])
+
+  const reactions = Array.isArray(message.reactions) ? message.reactions : []
+  const existingReactionIndex = reactions.findIndex((r) => getUserIds(r).includes(state.userId))
+  const existingReaction = existingReactionIndex !== -1 ? reactions[existingReactionIndex] : null
+  const isRemoving = existingReaction?.emoji === emoji
+
+  const backupReactions = cloneReactions(reactions)
+  const userDisplayName = state.userName || 'Me'
+
   if (!message.reactions) message.reactions = []
 
+  const removeUserFromReaction = (reaction) => {
+    reaction.userIds = getUserIds(reaction).filter((id) => id !== state.userId)
+    reaction.users = getUsers(reaction).filter((name) => name !== userDisplayName)
+  }
+
+  const addUserToReaction = (reaction) => {
+    if (!getUserIds(reaction).includes(state.userId)) {
+      reaction.userIds = [...getUserIds(reaction), state.userId]
+    }
+    if (!getUsers(reaction).includes(userDisplayName)) {
+      reaction.users = [...getUsers(reaction), userDisplayName]
+    }
+  }
+
   if (isRemoving) {
-    // Rimuovi la reazione localmente
-    message.reactions.splice(existingReactionIndex, 1)
-  } else {
-    if (existingReactionIndex !== -1) {
-      // Cambia l'emoji esistente
-      message.reactions[existingReactionIndex].emoji = emoji
+    const reaction = message.reactions[existingReactionIndex]
+    removeUserFromReaction(reaction)
+    if (getUserIds(reaction).length === 0) {
+      message.reactions.splice(existingReactionIndex, 1)
+    }
+  } else if (existingReactionIndex !== -1) {
+    const oldReaction = message.reactions[existingReactionIndex]
+    removeUserFromReaction(oldReaction)
+    if (getUserIds(oldReaction).length === 0) {
+      message.reactions.splice(existingReactionIndex, 1)
+    }
+
+    const targetIndex = message.reactions.findIndex((r) => r.emoji === emoji)
+    if (targetIndex !== -1) {
+      addUserToReaction(message.reactions[targetIndex])
     } else {
-      // Aggiungi nuova reazione
-      message.reactions.push({ userId: state.userId, emoji: emoji })
+      message.reactions.push({
+        emoji,
+        users: [userDisplayName],
+        userIds: [state.userId],
+      })
+    }
+  } else {
+    const targetIndex = message.reactions.findIndex((r) => r.emoji === emoji)
+    if (targetIndex !== -1) {
+      addUserToReaction(message.reactions[targetIndex])
+    } else {
+      message.reactions.push({
+        emoji,
+        users: [userDisplayName],
+        userIds: [state.userId],
+      })
     }
   }
 
