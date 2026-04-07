@@ -77,24 +77,7 @@ func (rt *_router) sendMessage(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	// Determine conversation type to set initial status
-	conv, err := rt.db.GetConversation(convId)
-	if err != nil {
-		http.Error(w, "Conversation not found", http.StatusNotFound)
-		return
-	}
-
-	var initialStatus string
-	switch conv.(type) {
-	case schemas.PrivateConversation:
-		// In private conversations, message can be delivered immediately
-		initialStatus = "delivered"
-	case schemas.Group:
-		// In groups, message also starts as delivered (no real delivery step in local app)
-		initialStatus = "delivered"
-	default:
-		initialStatus = "delivered"
-	}
+	initialStatus := schemas.MsgStatusDelivered
 
 	isInConversation, err := rt.db.IsUserInConversation(convId, senderId)
 	if err != nil {
