@@ -12,7 +12,7 @@ const isLoading = ref(false)
 async function doLogin() {
   errorMessage.value = ''
 
-  const name = username.value.trim()
+  const name = username.value
   if (name.length < 3 || name.length > 16) {
     errorMessage.value = 'User Name must be between 3 and 16 characters.'
     return
@@ -64,13 +64,14 @@ const httpStatusCreated = 201
                 <label class="form-label" for="displayName">Username</label>
                 <input
                   id="displayName"
-                  v-model.trim="username"
+                  v-model="username"
                   type="text"
                   class="form-control"
-                  placeholder="John"
                   minlength="3"
                   maxlength="16"
                   required
+                  oninvalid="this.setCustomValidity('Please fill out this field.')"
+                  oninput="this.setCustomValidity('')"
                 />
                 <div class="form-text">Min 3, max 16 characters.</div>
               </div>

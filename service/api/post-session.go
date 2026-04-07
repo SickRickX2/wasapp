@@ -28,6 +28,11 @@ func (rt *_router) doLogin(w http.ResponseWriter, r *http.Request, ps httprouter
 		return
 	}
 
+	if !validUsernameRegex.MatchString(req.Name) {
+		http.Error(w, "Invalid characters in username", http.StatusBadRequest)
+		return
+	}
+
 	var identifier schemas.UserId
 
 	//  cerca se esiste

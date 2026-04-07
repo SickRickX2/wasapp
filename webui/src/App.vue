@@ -101,17 +101,17 @@ async function removeProfilePicture() {
 
 async function updateUsername() {
   usernameError.value = ''
-  const trimmed = newUsername.value.trim()
-  if (!trimmed || !state.userId) return
+  const nextUsername = newUsername.value
+  if (!nextUsername.trim() || !state.userId) return
 
   isUpdatingUsername.value = true
   try {
     await axios.put(`/users/${state.userId}/username`, {
-      username: trimmed,
+      username: nextUsername,
     })
 
-    state.userName = trimmed
-    localStorage.setItem('userName', trimmed)
+    state.userName = nextUsername
+    localStorage.setItem('userName', nextUsername)
     window.dispatchEvent(new Event('refresh-conversations'))
     newUsername.value = ''
     alert('Username updated successfully!')

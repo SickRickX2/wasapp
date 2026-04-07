@@ -913,7 +913,7 @@ const executeForward = async (targetConvId) => {
 }
 
 async function deleteMessage(messageId) {
-  if (!confirm('Eliminare il messaggio?')) return
+  if (!confirm('Delete this message?')) return
   if (!selectedConversationId.value || !messageId) return
 
   try {
@@ -1134,7 +1134,7 @@ onUnmounted(() => {
         <div class="p-3 bg-light border-top mt-auto flex-shrink-0">
           <div v-if="messageToReply" class="bg-light border-start border-4 border-primary p-2 mb-2 rounded d-flex justify-content-between align-items-center shadow-sm">
             <div class="flex-grow-1 min-w-0">
-              <small class="d-block text-muted fw-bold">Rispondi a {{ getSenderLabel(messageToReply) }}</small>
+              <small class="d-block text-muted fw-bold">Reply to {{ getSenderLabel(messageToReply) }}</small>
               <small class="d-block text-truncate text-muted">{{ messageToReply.text || '(No text)' }}</small>
             </div>
             <button type="button" class="btn btn-sm btn-close ms-2" @click="messageToReply = null"></button>
@@ -1204,14 +1204,13 @@ onUnmounted(() => {
       <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
-            <h1 class="modal-title fs-5" id="forwardModalLabel">Inoltra messaggio a...</h1>
+            <h1 class="modal-title fs-5" id="forwardModalLabel">Forward message to...</h1>
             <button type="button" class="btn-close" id="closeForwardModalBtn" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body p-0">
             <div class="list-group list-group-flush">
               <template v-for="conv in conversations" :key="conv.convId">
                 <button
-                  v-if="conv.convId !== selectedConversationId"
                   type="button"
                   class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3"
                   @click="executeForward(conv.convId)"
@@ -1228,8 +1227,8 @@ onUnmounted(() => {
                   <span class="material-symbols-outlined text-primary">send</span>
                 </button>
               </template>
-              <div v-if="conversations.length <= 1" class="p-4 text-center text-muted">
-                Nessun'altra chat disponibile per l'inoltro.
+              <div v-if="conversations.length === 0" class="p-4 text-center text-muted">
+                No chats available for forwarding.
               </div>
             </div>
           </div>

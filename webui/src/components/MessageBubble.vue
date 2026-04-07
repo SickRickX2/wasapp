@@ -149,7 +149,7 @@ const emit = defineEmits([
             data-bs-toggle="dropdown"
             data-bs-boundary="window"
             :aria-expanded="isMenuOpen"
-            title="Opzioni messaggio"
+            title="Message options"
             @click.stop="emit('toggle-menu', message.messageId)"
           >
             <span class="material-symbols-outlined" style="font-size: 20px; vertical-align: middle;">more_vert</span>
@@ -168,17 +168,17 @@ const emit = defineEmits([
             </li>
             <li>
               <button class="dropdown-item d-flex align-items-center gap-2" type="button" @click="emit('forward-message', message); emit('close-menu')" data-bs-toggle="modal" data-bs-target="#forwardModal">
-                <span class="material-symbols-outlined" style="font-size: 18px;">forward</span> Inoltra
+                <span class="material-symbols-outlined" style="font-size: 18px;">forward</span> Forward
               </button>
             </li>
             <li>
               <button class="dropdown-item d-flex align-items-center gap-2" type="button" @click="emit('reply-message', message); emit('close-menu')">
-                <span class="material-symbols-outlined" style="font-size: 18px;">reply</span> Rispondi
+                <span class="material-symbols-outlined" style="font-size: 18px;">reply</span> Reply
               </button>
             </li>
             <li v-if="message.sender === userId">
               <button class="dropdown-item text-danger d-flex align-items-center gap-2" type="button" @click="emit('delete-message', message.messageId); emit('close-menu')">
-                <span class="material-symbols-outlined" style="font-size: 18px;">delete</span> Elimina
+                <span class="material-symbols-outlined" style="font-size: 18px;">delete</span> Delete
               </button>
             </li>
           </ul>

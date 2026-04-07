@@ -45,7 +45,6 @@ func (rt *_router) setUsername(w http.ResponseWriter, r *http.Request, ps httpro
 		writeJSONError(w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	req.Username = strings.TrimSpace(req.Username)
 
 	// validazioni usando la regex globale
 	if len(req.Username) < 3 || len(req.Username) > 16 {

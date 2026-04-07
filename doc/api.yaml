@@ -49,7 +49,7 @@ paths:
                   type: string
                   description: name used by the user
                   example: Pippo
-                  pattern: '^.*?$'
+                  pattern: '^[A-Za-z0-9_-]+$'
                   minLength: 3
                   maxLength: 16
               required: 
