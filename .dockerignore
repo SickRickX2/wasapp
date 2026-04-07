@@ -1,0 +1,12 @@
+# Keep Docker build context lean and avoid host-specific dependencies
+.git
+.gitignore
+.DS_Store
+WasaBase.db
+
+# Frontend artifacts/dependencies should be installed in-container
+webui/node_modules
+webui/dist
+
+# Generic node modules exclusion
+**/node_modules

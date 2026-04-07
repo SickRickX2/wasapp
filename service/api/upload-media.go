@@ -24,12 +24,12 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 	const maxUploadSize = 5 << 20 // 5 MB
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		// Lo YAML prevede il 413 se è troppo grande!
+
 		http.Error(w, `{"message": "File too big"}`, http.StatusRequestEntityTooLarge)
 		return
 	}
 
-	// 3. Leggi il file dal form (Il campo DEVE chiamarsi "file", non "image")
+	// 3. Leggi il file dal form
 	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, `{"description": "Invalid file key (use 'file')"}`, http.StatusBadRequest)
@@ -37,8 +37,7 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 	defer file.Close()
 
-	// 4. Leggi il MimeType (es. image/jpeg)
-	// Leggiamo i primi 512 byte per sniffare il tipo reale
+	// 4. Controlla che sia un'immagine (lettura dei primi 512 byte)
 	buff := make([]byte, 512)
 	_, err = file.Read(buff)
 	if err != nil {
@@ -95,26 +94,23 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	// 8. Rispondi col JSON (incluso l'ID che serve per mandare il messaggio!)
+	// 8. Rispondi col JSON
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
 	response := struct {
-		MediaId string `json:"mediaId"` // Semplice stringa, niente MessageId impropri
+		MediaId string `json:"mediaId"`
 		Url     string `json:"url"`
 	}{
 		MediaId: string(mediaId),
 		Url:     mediaObj.URL,
 	}
 
-	// ECCO IL FIX PER IL LINTER
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		rt.baseLogger.WithError(err).Error("failed to encode response in uploadMedia")
 	}
 }
 
-// Helper ID (lo mettiamo qui o in un utils)
-// Usiamo tipo MessageId per comodità o stringa semplice
 func generateMediaId() schemas.MessageId {
 	const charSet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, 10)
