@@ -38,23 +38,56 @@ defineProps({
 
 const emit = defineEmits(['select'])
 
-function getConversationLastMessagePreview(conversation) {
+function getParticipantNameFromConversation(conversation, participantId) {
+  const participants = Array.isArray(conversation?.participants) ? conversation.participants : []
+  const participantNames = Array.isArray(conversation?.participantNames) ? conversation.participantNames : []
+  const index = participants.findIndex((id) => id === participantId)
+  if (index >= 0 && participantNames[index]) return participantNames[index]
+  return participantId || 'User'
+}
+
+function getLastMessageSenderLabel(conversation, currentUserId) {
+  const senderId = conversation?.lastMessage?.sender
+  if (!senderId) return ''
+  if (senderId === currentUserId) return 'You'
+  return getParticipantNameFromConversation(conversation, senderId)
+}
+
+function getLastMessageStatusIcon(conversation, currentUserId) {
+  const lastMessage = conversation?.lastMessage
+  if (!lastMessage || lastMessage.sender !== currentUserId || lastMessage.status === 'deleted') return ''
+  return lastMessage.status === 'seen' ? 'done_all' : 'done'
+}
+
+function getLastMessageStatusClass(conversation, currentUserId, isSelected) {
+  const lastMessage = conversation?.lastMessage
+  if (!lastMessage || lastMessage.sender !== currentUserId || lastMessage.status === 'deleted') return ''
+  if (lastMessage.status === 'seen') return isSelected ? 'text-white' : 'text-info'
+  return isSelected ? 'text-white-50' : 'text-muted'
+}
+
+function getConversationLastMessagePreview(conversation, currentUserId) {
   const lastMessage = conversation?.lastMessage
   if (!lastMessage) return ''
 
+  const senderLabel = getLastMessageSenderLabel(conversation, currentUserId)
+
   if (lastMessage.status === 'deleted') {
-    return 'Deleted message'
+    return senderLabel ? `${senderLabel}: Deleted message` : 'Deleted message'
   }
 
   if (lastMessage.kind === 'system_add_member') {
-    return `${lastMessage.text || 'Someone'} was added`
+    const msg = `${lastMessage.text || 'Someone'} was added`
+    return senderLabel ? `${senderLabel}: ${msg}` : msg
   }
 
   if (lastMessage.kind === 'system_leave_group') {
-    return `${lastMessage.text || 'Someone'} left`
+    const msg = `${lastMessage.text || 'Someone'} left`
+    return senderLabel ? `${senderLabel}: ${msg}` : msg
   }
 
-  return lastMessage.text || (lastMessage.mediaId ? '📷 Image' : '')
+  const msg = lastMessage.text || (lastMessage.mediaId ? '📷 Image' : '')
+  return senderLabel ? `${senderLabel}: ${msg}` : msg
 }
 </script>
 
@@ -93,12 +126,21 @@ function getConversationLastMessagePreview(conversation) {
           </div>
 
           <div class="conversation-preview-row">
-            <small
-              class="text-muted text-truncate conversation-preview"
-              :class="{ 'text-white-50': selectedConversationId === conversation.convId }"
-            >
-              {{ getConversationLastMessagePreview(conversation) }}
-            </small>
+            <div class="d-flex align-items-center gap-1 conversation-preview-wrap">
+              <span
+                v-if="getLastMessageStatusIcon(conversation, userId)"
+                class="material-symbols-outlined conversation-preview-status"
+                :class="getLastMessageStatusClass(conversation, userId, selectedConversationId === conversation.convId)"
+              >
+                {{ getLastMessageStatusIcon(conversation, userId) }}
+              </span>
+              <small
+                class="text-muted text-truncate conversation-preview"
+                :class="{ 'text-white-50': selectedConversationId === conversation.convId }"
+              >
+                {{ getConversationLastMessagePreview(conversation, userId) }}
+              </small>
+            </div>
 
             <span
               v-if="conversation.unreadCount && conversation.unreadCount > 0 && conversation.convId !== selectedConversationId"
@@ -155,5 +197,15 @@ function getConversationLastMessagePreview(conversation) {
 
 .conversation-preview {
   min-width: 0;
+}
+
+.conversation-preview-wrap {
+  min-width: 0;
+}
+
+.conversation-preview-status {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
 }
 </style>
