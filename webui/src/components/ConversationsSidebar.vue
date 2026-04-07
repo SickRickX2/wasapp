@@ -81,22 +81,20 @@ function getConversationLastMessagePreview(conversation) {
           class="flex-shrink-0"
         />
         <div class="flex-grow-1 min-w-0">
-          <div class="d-flex justify-content-between align-items-center mb-1 gap-2">
-            <span class="fw-bold text-truncate">{{ getChatTitle(conversation) }}</span>
+          <div class="conversation-title-row mb-1">
+            <span class="fw-bold text-truncate conversation-title">{{ getChatTitle(conversation) }}</span>
             <small
               v-if="conversation.lastMessage?.time"
-              class="text-muted flex-shrink-0"
-              style="font-size: 0.75rem;"
+              class="text-muted flex-shrink-0 text-nowrap conversation-time"
               :class="{ 'text-white-50': selectedConversationId === conversation.convId }"
             >
               {{ formatTime(conversation.lastMessage.time) }}
             </small>
           </div>
 
-          <div class="d-flex justify-content-between align-items-center gap-2">
+          <div class="conversation-preview-row">
             <small
-              class="text-muted text-truncate pe-2 flex-grow-1"
-              style="max-width: 85%;"
+              class="text-muted text-truncate conversation-preview"
               :class="{ 'text-white-50': selectedConversationId === conversation.convId }"
             >
               {{ getConversationLastMessagePreview(conversation) }}
@@ -131,5 +129,31 @@ function getConversationLastMessagePreview(conversation) {
 .list-group-item.active:focus {
   background-color: #0e9f6e;
   border-color: #0e9f6e;
+}
+
+.conversation-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.conversation-title {
+  min-width: 0;
+}
+
+.conversation-time {
+  font-size: 0.75rem;
+}
+
+.conversation-preview-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.conversation-preview {
+  min-width: 0;
 }
 </style>

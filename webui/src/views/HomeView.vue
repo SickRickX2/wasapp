@@ -36,6 +36,7 @@ const hasMoreMessages = ref(true)
 const messageToForward = ref(null)
 const messageToReply = ref(null)
 const quickEmojis = ['👍', '❤️', '😂', '😯', '😢', '🙏']
+const isPollingInProgress = ref(false)
 let pollingInterval = null
 let groupMemberSearchTimer = null
 
@@ -1023,6 +1024,8 @@ async function leaveSelectedGroup() {
 onMounted(async () => {
   await loadConversations()
   pollingInterval = setInterval(async () => {
+    if (isPollingInProgress.value) return
+    isPollingInProgress.value = true
     try {
       await loadConversations()
       if (selectedConversationId.value) {
@@ -1030,6 +1033,8 @@ onMounted(async () => {
       }
     } catch (e) {
       console.error('Errore nel polling:', e)
+    } finally {
+      isPollingInProgress.value = false
     }
   }, 3000)
   window.addEventListener('click', closeMessageMenu)
