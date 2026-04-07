@@ -65,6 +65,7 @@ async function uploadProfilePicture(event) {
     const pfpUrl = response.data?.pfpUrl
     if (pfpUrl) {
       updateProfilePictureUrl(normalizeMediaUrl(pfpUrl))
+      window.dispatchEvent(new Event('refresh-conversations'))
       alert('Profile picture updated successfully!')
     } else {
       alert('Profile picture updated, but URL not returned')
@@ -91,6 +92,7 @@ async function removeProfilePicture() {
   try {
     await axios.delete(`/users/${state.userId}/pfp`)
     updateProfilePictureUrl(null)
+    window.dispatchEvent(new Event('refresh-conversations'))
     alert('Profile picture removed!')
   } catch (err) {
     alert('Error removing profile picture')
@@ -110,6 +112,7 @@ async function updateUsername() {
 
     state.userName = trimmed
     localStorage.setItem('userName', trimmed)
+    window.dispatchEvent(new Event('refresh-conversations'))
     newUsername.value = ''
     alert('Username updated successfully!')
   } catch (error) {

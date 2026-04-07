@@ -394,9 +394,9 @@ function getParticipantAvatarUrl(userId) {
   return userPfpCache[userId] ?? null
 }
 
-async function ensureUserPfpLoaded(userId) {
+async function ensureUserPfpLoaded(userId, forceRefresh = false) {
   if (!userId || userId === state.userId) return
-  if (userPfpCache[userId] !== undefined) return
+  if (!forceRefresh && userPfpCache[userId] !== undefined) return
 
   userPfpCache[userId] = null
   try {
@@ -413,7 +413,7 @@ async function ensureUserPfpLoaded(userId) {
 
 async function loadUsersPfps(userIds) {
   const ids = Array.isArray(userIds) ? userIds : []
-  await Promise.all(ids.map((id) => ensureUserPfpLoaded(id)))
+  await Promise.all(ids.map((id) => ensureUserPfpLoaded(id, true)))
 }
 
 watch(showConversationInfoModal, async (isOpen) => {
@@ -460,7 +460,7 @@ async function addUserToSelectedGroup(user) {
     })
 
     userNameCache.value[user.userId] = user.userName || userNameCache.value[user.userId] || ''
-    await ensureUserPfpLoaded(user.userId)
+    await ensureUserPfpLoaded(user.userId, true)
 
     groupMemberSearchQuery.value = ''
     groupMemberSearchResults.value = []
@@ -481,9 +481,10 @@ async function loadConversations() {
     if (!state.userId) return
     const response = await axios.get(`/users/${state.userId}/conversations`)
     const data = response.data
-    conversations.value = Array.isArray(data?.conversations) ? data.conversations : []
-    loadGroupPhotos(conversations.value)
-    loadParticipantPfps(conversations.value)
+    const nextConversations = Array.isArray(data?.conversations) ? [...data.conversations] : []
+    conversations.value = nextConversations
+    loadGroupPhotos(nextConversations)
+    loadParticipantPfps(nextConversations)
     await enrichConversationNames()
   } catch (err) {
     console.error('Failed to load conversations', err)
@@ -521,7 +522,7 @@ async function loadParticipantPfps(conversationsList) {
 
     const otherId = getOtherParticipantId(conv)
     if (!otherId) continue
-    await ensureUserPfpLoaded(otherId)
+    await ensureUserPfpLoaded(otherId, true)
   }
 }
 
@@ -648,7 +649,6 @@ async function markUnreadMessagesAsSeen(messages) {
 }
 
 async function syncData() {
-  await loadConversations()
   if (selectedConversationId.value) {
     // Se l'utente ha caricato messaggi precedenti, controlla solo i nuovi (offset=0)
     if (currentOffset.value > 0) {
@@ -677,6 +677,10 @@ async function syncData() {
     }
     await markUnreadMessagesAsSeen(currentMessages.value)
   }
+}
+
+async function refreshConversationsNow() {
+  await loadConversations()
 }
 
 async function selectConversation(id) {
@@ -1018,14 +1022,25 @@ async function leaveSelectedGroup() {
 
 onMounted(async () => {
   await loadConversations()
-  pollingInterval = setInterval(syncData, 3000)
+  pollingInterval = setInterval(async () => {
+    try {
+      await loadConversations()
+      if (selectedConversationId.value) {
+        await syncData()
+      }
+    } catch (e) {
+      console.error('Errore nel polling:', e)
+    }
+  }, 3000)
   window.addEventListener('click', closeMessageMenu)
+  window.addEventListener('refresh-conversations', refreshConversationsNow)
 })
 
 onUnmounted(() => {
   if (pollingInterval) clearInterval(pollingInterval)
   if (groupMemberSearchTimer) clearTimeout(groupMemberSearchTimer)
   window.removeEventListener('click', closeMessageMenu)
+  window.removeEventListener('refresh-conversations', refreshConversationsNow)
 })
 </script>
 
