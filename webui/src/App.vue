@@ -249,18 +249,18 @@ async function updateUsername() {
 <style>
 :root,
 [data-bs-theme='light'] {
-  /* Il nuovo verde smeraldo */
+
   --bs-primary: #10b981;
-  /* RGB necessario per i focus ring e le ombreggiature dei bottoni di Bootstrap */
+
   --bs-primary-rgb: 16, 185, 129;
 
-  /* (Opzionale) Adatta anche il colore del testo sui bottoni primary per contrasto */
+
   --bs-primary-text-emphasis: #053d2b;
   --bs-primary-bg-subtle: #d1f1e6;
   --bs-primary-border-subtle: #a3e3cd;
 }
 
-/* Forza il colore di background e bordo dei bottoni primari */
+
 .btn-primary {
   --bs-btn-bg: #10b981;
   --bs-btn-border-color: #10b981;
