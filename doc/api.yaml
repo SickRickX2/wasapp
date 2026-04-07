@@ -808,15 +808,14 @@ paths:
       get:
         operationId: searchUsers
         summary: Search users
-        description: Search for users by part of their name
+        description: Search for users by part of their name. If query parameter q is omitted or empty, returns all existing WASAText usernames.
         tags: ["get"]
         parameters:
           - name: q
             in: query
-            description: The string to search in usernames
+            description: Optional string to search in usernames. Leave empty to retrieve all users.
             schema:
               type: string
-              minLength: 1
               maxLength: 50
               pattern: '^.*$'
         responses:

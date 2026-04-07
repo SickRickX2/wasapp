@@ -425,6 +425,18 @@ watch(showConversationInfoModal, async (isOpen) => {
   const participants = Array.isArray(conv.participants) ? conv.participants : []
   await Promise.all(participants.map((id) => resolveUsernameById(id)))
   await loadUsersPfps(participants)
+
+  if (conv.type === 'group') {
+    try {
+      const response = await axios.get('/users')
+      const data = response.data
+      const users = Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : []
+      const alreadyInGroup = new Set(conv.participants || [])
+      groupMemberSearchResults.value = users.filter((u) => u?.userId && !alreadyInGroup.has(u.userId))
+    } catch {
+      groupMemberSearchResults.value = []
+    }
+  }
 })
 
 watch(groupMemberSearchQuery, (value) => {
@@ -433,13 +445,14 @@ watch(groupMemberSearchQuery, (value) => {
     const conv = selectedConversation.value
     const q = value.trim()
 
-    if (!showConversationInfoModal.value || !conv || conv.type !== 'group' || q.length === 0) {
+    if (!showConversationInfoModal.value || !conv || conv.type !== 'group') {
       groupMemberSearchResults.value = []
       return
     }
 
     try {
-      const response = await axios.get(`/users?q=${encodeURIComponent(q)}`)
+      const suffix = q.length > 0 ? `?q=${encodeURIComponent(q)}` : ''
+      const response = await axios.get(`/users${suffix}`)
       const data = response.data
       const users = Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : []
       const alreadyInGroup = new Set(conv.participants || [])

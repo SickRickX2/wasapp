@@ -1,7 +1,8 @@
 <script setup>
 import { Modal } from 'bootstrap'
-import { onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import axios from '../services/axios'
+import { state } from '../services/state'
 
 const emit = defineEmits(['chatCreated'])
 
@@ -12,29 +13,37 @@ const errorMessage = ref('')
 
 let debounceTimer = null
 
+async function fetchUsers(query = '') {
+  errorMessage.value = ''
+  try {
+    const suffix = query.trim().length > 0 ? `?q=${encodeURIComponent(query.trim())}` : ''
+    const response = await axios.get(`/users${suffix}`)
+    const data = response.data
+    const users = Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : []
+    searchResults.value = users.filter((user) => user?.userId && user.userId !== state.userId)
+  } catch {
+    searchResults.value = []
+    errorMessage.value = 'Error while searching users.'
+  }
+}
+
+function handleModalShown() {
+  fetchUsers(searchQuery.value)
+}
+
+onMounted(() => {
+  modalRef.value?.addEventListener('shown.bs.modal', handleModalShown)
+})
+
 onUnmounted(() => {
   clearTimeout(debounceTimer)
+  modalRef.value?.removeEventListener('shown.bs.modal', handleModalShown)
 })
 
 watch(searchQuery, (value) => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(async () => {
-    const q = value.trim()
-    errorMessage.value = ''
-
-    if (q.length === 0) {
-      searchResults.value = []
-      return
-    }
-
-    try {
-      const response = await axios.get(`/users?q=${encodeURIComponent(q)}`)
-      const data = response.data
-      searchResults.value = Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : []
-    } catch {
-      searchResults.value = []
-      errorMessage.value = 'Error while searching users.'
-    }
+    await fetchUsers(value)
   }, 300)
 })
 
@@ -124,7 +133,7 @@ async function startPrivateChat(recipientId) {
             >
               {{ user.userName }}
             </li>
-            <li v-if="searchQuery.trim().length > 0 && searchResults.length === 0" class="list-group-item text-muted">
+            <li v-if="searchResults.length === 0" class="list-group-item text-muted">
               No results
             </li>
           </ul>
