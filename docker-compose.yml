@@ -7,6 +7,8 @@ services:
     ports:
       - "3000:3000"
     restart: unless-stopped
+    volumes:
+      - ./app_data:/app
 
   frontend:
     container_name: wasa-frontend

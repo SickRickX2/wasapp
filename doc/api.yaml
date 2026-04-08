@@ -816,6 +816,7 @@ paths:
             description: Optional string to search in usernames. Leave empty to retrieve all users.
             schema:
               type: string
+              minLength: 0
               maxLength: 50
               pattern: '^.*$'
         responses:
