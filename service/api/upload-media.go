@@ -62,8 +62,13 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 		fileExt = ".jpg"
 	}
 	newFilename := string(mediaId) + fileExt
-	// Percorso salvataggio: ./images/media_xxxx.jpg
-	savePath := filepath.Join("images", newFilename)
+	if err := os.MkdirAll(mediaDir, 0o755); err != nil {
+		rt.baseLogger.WithError(err).Error("Error creating media directory")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	// Percorso salvataggio: /tmp/wasa-images/media_xxxx.jpg
+	savePath := filepath.Join(mediaDir, newFilename)
 
 	// 6. Salva su Disco
 	dst, err := os.Create(savePath)

@@ -48,7 +48,7 @@ func (rt *_router) Handler() http.Handler {
 	rt.router.POST("/media", rt.uploadMedia)
 
 	// questo mi serve per accedere alle immagini caricate
-	rt.router.ServeFiles("/images/*filepath", http.Dir("./images"))
+	rt.router.ServeFiles("/images/*filepath", http.Dir(mediaDir))
 
 	return rt.router
 }

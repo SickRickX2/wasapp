@@ -73,9 +73,9 @@ func (rt *_router) setGroupPhoto(w http.ResponseWriter, r *http.Request, ps http
 		fileExt = ".jpg"
 	}
 	newFilename := string(mediaId) + fileExt
-	savePath := filepath.Join("images", newFilename)
+	savePath := filepath.Join(mediaDir, newFilename)
 
-	if err := os.MkdirAll("images", 0o755); err != nil {
+	if err := os.MkdirAll(mediaDir, 0o755); err != nil {
 		rt.baseLogger.WithError(err).Error("Error creating images directory")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
