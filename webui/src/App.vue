@@ -16,7 +16,8 @@ const isUpdatingUsername = ref(false)
 function normalizeMediaUrl(url) {
   if (!url) return null
   if (/^https?:\/\//i.test(url)) return url
-  return `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`
+  const apiUrl = typeof __API_URL__ !== 'undefined' ? __API_URL__ : 'http://localhost:3000'
+  return `${apiUrl}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
 async function doLogout() {
