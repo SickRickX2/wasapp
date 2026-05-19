@@ -10,18 +10,16 @@ import (
 )
 
 func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 	userId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
-	// 2. Parametri Path
 	vars := ps
 	convId := schemas.ConversationId(vars.ByName("convId"))
 
-	// 3. Controllo Sicurezza: Sei nel gruppo?
+	// controlla se nel gruppo
 	isInGroup, err := rt.db.IsUserInConversation(convId, userId)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error checking group membership")
@@ -32,8 +30,6 @@ func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httpr
 		http.Error(w, "Forbidden: You are not a participant of this group", http.StatusForbidden)
 		return
 	}
-
-	// 4. Parsing Body
 	var req struct {
 		GroupName string `json:"groupName"`
 	}
@@ -42,13 +38,13 @@ func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 
-	// Validazione nome (come da YAML: min 1, max 16 o 30 caratteri)
+	// validazione del nome, vedi api
 	if len(req.GroupName) < 1 || len(req.GroupName) > 30 {
 		http.Error(w, "Group name must be between 1 and 30 chars", http.StatusBadRequest)
 		return
 	}
 
-	// 5. Aggiorna DB
+	// aggiorna nel db
 	err = rt.db.SetGroupName(convId, req.GroupName)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error setting group name")
@@ -56,10 +52,6 @@ func (rt *_router) setGroupName(w http.ResponseWriter, r *http.Request, ps httpr
 		return
 	}
 
-	// 6. Successo: Costruiamo e restituiamo il JSON aggiornato
-	// Nota: Per completezza assoluta dovremmo fare una SELECT dal DB per riavere
-	// anche i partecipanti e la data di creazione (CreatedAt),
-	// ma per confermare la modifica al frontend bastano ID e Nuovo Nome.
 	updatedGroup := schemas.Group{
 		ConvId:    convId,
 		Type:      "group",

@@ -2,7 +2,7 @@
 import { RouterLink, RouterView } from 'vue-router'
 import { useRouter } from 'vue-router'
 import { ref } from 'vue'
-import axios from './services/axios'
+import axios, { resolveApiUrl } from './services/axios'
 import { state, updateProfilePictureUrl } from './services/state'
 import UserAvatar from './components/UserAvatar.vue'
 
@@ -14,17 +14,14 @@ const usernameError = ref('')
 const isUpdatingUsername = ref(false)
 
 function normalizeMediaUrl(url) {
-  if (!url) return null
-  if (/^https?:\/\//i.test(url)) return url
-  const apiUrl = typeof __API_URL__ !== 'undefined' ? __API_URL__ : 'http://localhost:3000'
-  return `${apiUrl}${url.startsWith('/') ? '' : '/'}${url}`
+  return resolveApiUrl(url)
 }
 
 async function doLogout() {
   try {
     await axios.delete('/session')
   } catch {
-    // anche in caso di errore server, forziamo logout lato frontend
+    // ignora errori e fa il logout
   } finally {
     state.userId = null
     state.userName = null
@@ -46,7 +43,7 @@ async function uploadProfilePicture(event) {
 
   isUploadingProfilePicture.value = true
   try {
-    // 1) Upload file to media endpoint (multipart/form-data)
+    // upload
     const formData = new FormData()
     formData.append('file', file)
 
@@ -58,7 +55,7 @@ async function uploadProfilePicture(event) {
       return
     }
 
-    // 2) Link uploaded media as user profile picture
+    // linka al profilo
     const response = await axios.put(`/users/${state.userId}/pfp`, {
       mediaId,
     })

@@ -40,7 +40,7 @@ const isPollingInProgress = ref(false)
 let pollingInterval = null
 let groupMemberSearchTimer = null
 
-// Anti-crash blindatura: traccia quali messaggi sono già stati processati
+// evita loop di marking, salva in locale 
 const locallyMarkedAsSeen = new Set()
 
 const selectedConversation = computed(() => {
@@ -597,17 +597,17 @@ async function loadMoreMessages() {
       hasMoreMessages.value = false
     }
 
-    // Aggiungi alla FINE, così dopo il reverse appariranno SOPRA (messaggi più vecchi in alto)
+    // aggiungi alla fine, così dopo il reverse appariranno sopra 
     currentMessages.value = [...currentMessages.value, ...incoming]
     currentOffset.value += 20
 
     const senderIds = new Set(incoming.map((m) => m?.sender).filter(Boolean))
     await Promise.all(Array.from(senderIds).map((id) => resolveUsernameById(id)))
 
-    // Scroll giù di poco per mostrare ai messaggi nuovi senza perdere il contesto
+    // scroll giù di poco per mostrare ai messaggi nuovi senza perdere il contesto
     await nextTick()
     if (messagesContainer.value) {
-      const scrollIncrement = 150 // Scroll di 150px verso il basso per mostrare i nuovi messaggi
+      const scrollIncrement = 150 
       messagesContainer.value.scrollTop += scrollIncrement
       console.log('Scrolled down by', scrollIncrement, 'px')
     }
@@ -622,26 +622,26 @@ async function loadMoreMessages() {
 const isMessageReadByAll = (message) => {
   if (!selectedConversation.value) return false
 
-  // Se è una chat privata, basta lo status standard
+  // se chat privata basta lo status standard
   if (selectedConversation.value.type !== 'group') {
     return message.status === 'seen'
   }
 
   // SE È UN GRUPPO:
-  // Se il backend fornisce un array (es. message.readBy), calcola la lunghezza
+  // calcola partecipanti
   if (Array.isArray(message.readBy)) {
     const expectedReaders = (selectedConversation.value.participants?.length || 2) - 1
     return message.readBy.length >= expectedReaders
   }
 
-  // Se il backend fornisce solo uno status globale, ci fidiamo di quello
+  // se stato globale allora si basa su quello
   return message.status === 'seen'
 }
 
 async function markUnreadMessagesAsSeen(messages) {
   if (!messages || messages.length === 0) return
 
-  // Filtra solo i messaggi: non miei, non ancora letti, e MAI processati prima
+  // filtra i messaggi non letti non miei
   const unreadMessages = messages.filter(m => {
     const isMine = m.sender === state.userId
     const isUnread = m.status !== 'seen'
@@ -650,12 +650,12 @@ async function markUnreadMessagesAsSeen(messages) {
   })
 
   for (const msg of unreadMessages) {
-    // Aggiungi SUBITO al set per prevenire loop causati dal polling veloce
+    // prima aggiungi per evitare loop
     locallyMarkedAsSeen.add(msg.messageId)
     try {
       await axios.put(`/conversations/${selectedConversationId.value}/messages/${msg.messageId}/seen`)
     } catch (error) {
-      // Se fallisce, rimuovi dal set per riprovare al prossimo giro
+      // nel caso fallisce riporva
       locallyMarkedAsSeen.delete(msg.messageId)
       console.error('Error marking message as seen', error)
     }
@@ -664,20 +664,20 @@ async function markUnreadMessagesAsSeen(messages) {
 
 async function syncData() {
   if (selectedConversationId.value) {
-    // Se l'utente ha caricato messaggi precedenti, controlla solo i nuovi (offset=0)
+    // se ha caricato quelli precedenti cerca i nuovi messaggi in fondo
     if (currentOffset.value > 0) {
       try {
         const response = await axios.get(`/conversations/${selectedConversationId.value}/messages?limit=20&offset=0`)
         const latestMessages = Array.isArray(response.data?.messages) ? response.data.messages : (Array.isArray(response.data) ? response.data : [])
         
         if (latestMessages.length > 0) {
-          // Prendi solo i messaggi che NON sono già nell'array
+          // prendi solo quelli nuovi
           const existingIds = new Set(currentMessages.value.map(m => m.messageId))
           const newMessages = latestMessages.filter(m => !existingIds.has(m.messageId))
           
           if (newMessages.length > 0) {
             console.log('Found', newMessages.length, 'new messages during polling')
-            // Aggiungi alla fine e scrolla automaticamente
+            // aggiungi alla fine e screolla
             currentMessages.value = [...currentMessages.value, ...newMessages]
             await scrollToBottom()
           }
@@ -686,7 +686,7 @@ async function syncData() {
         console.error('Failed to check for new messages during polling', err)
       }
     } else {
-      // Carica normalmente se l'utente sta guardando i messaggi recenti
+      // carica se non ha ancora caricato o sta in fondo
       await loadMessages(selectedConversationId.value, { isPolling: true })
     }
     await markUnreadMessagesAsSeen(currentMessages.value)
@@ -878,7 +878,7 @@ async function toggleReaction(message, emoji) {
 
   closeMessageMenu()
 
-  // 4. Esegui la chiamata API in background
+  // esegue la chiamata in background, se fallisce ripristina lo stato precedente
   try {
     if (isRemoving) {
       await axios.delete(
@@ -892,7 +892,7 @@ async function toggleReaction(message, emoji) {
     }
   } catch {
     console.error('Errore reazione, ripristino stato...')
-    // Ripristina in caso di errore di rete
+    // ripristina in caso di errore di rete
     message.reactions = backupReactions
   }
 }

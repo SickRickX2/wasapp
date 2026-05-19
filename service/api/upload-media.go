@@ -14,14 +14,13 @@ import (
 )
 
 func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Autenticazione (bisogna essere loggati per caricare file)
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	const maxUploadSize = 5 << 20 // 5 MB
+	const maxUploadSize = 5 << 20 // 5mb
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
 
@@ -29,7 +28,7 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	// 3. Leggi il file dal form
+	// prendi il file
 	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, `{"description": "Invalid file key (use 'file')"}`, http.StatusBadRequest)
@@ -37,7 +36,7 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 	defer file.Close()
 
-	// 4. Controlla che sia un'immagine (lettura dei primi 512 byte)
+	// vedi se è un immagine
 	buff := make([]byte, 512)
 	_, err = file.Read(buff)
 	if err != nil {
@@ -45,20 +44,18 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 	mimeType := http.DetectContentType(buff)
-	// Controlliamo che sia un'immagine
 	if !strings.HasPrefix(mimeType, "image/") {
 		http.Error(w, "Only images are allowed", http.StatusBadRequest)
 		return
 	}
-	// Resettiamo il puntatore del file all'inizio dopo aver letto i 512 byte
+	// resetta il puntatore
 	_, _ = file.Seek(0, 0)
 
-	// 5. Genera ID e Nome File
+	// genera id e nome
 	mediaId := generateMediaId()
-	// Estensione (es. .jpg)
+	// metti l'estensione
 	fileExt := filepath.Ext(fileHeader.Filename)
 	if fileExt == "" {
-		// Fallback brutale se non c'è estensione
 		fileExt = ".jpg"
 	}
 	newFilename := string(mediaId) + fileExt
@@ -67,10 +64,9 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	// Percorso salvataggio: /tmp/wasa-images/media_xxxx.jpg
 	savePath := filepath.Join(mediaDir, newFilename)
 
-	// 6. Salva su Disco
+	// salva su disco
 	dst, err := os.Create(savePath)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error creating file on disk")
@@ -85,9 +81,9 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	// 7. Salva nel DB
+	// salva nel db
 	mediaObj := schemas.Media{
-		URL:      "/images/" + newFilename, // Questo sarà l'URL per scaricarla
+		URL:      "/images/" + newFilename,
 		Filename: fileHeader.Filename,
 		MimeType: mimeType,
 		Size:     int(fileHeader.Size),
@@ -99,7 +95,7 @@ func (rt *_router) uploadMedia(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	// 8. Rispondi col JSON
+	// rispondi con il json
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 

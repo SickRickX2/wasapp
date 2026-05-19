@@ -11,20 +11,16 @@ import (
 )
 
 func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Autenticazione (Estraiamo il VERO utente da qui!)
+
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	// QUESTO è il "me" di cui parla l'URL
 	myUserId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
-
-	// 2. Prende convId dal path (userId non c'è più nell'URL!)
 	convId := schemas.ConversationId(ps.ByName("convId"))
 
-	// 3. Rimuove il membro dal DB usando myUserId
-	// Prima salviamo un messaggio di sistema persistente finché l'utente è ancora membro
+	// l'user deve stare dentro
 	leavingUserLabel := string(myUserId)
 	if leavingUser, userErr := rt.db.GetUserById(myUserId); userErr == nil && leavingUser.Name != "" {
 		leavingUserLabel = leavingUser.Name
@@ -58,8 +54,7 @@ func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// 4. RECUPERA IL GRUPPO AGGIORNATO (Requisito YAML!)
-	// Nota: Assicurati di avere una funzione GetConversation o GetGroup nel DB
+	// se il gruppo è vuoto lo cancella
 	updatedGroup, err := rt.db.GetConversation(convId)
 	if err != nil {
 		rt.baseLogger.WithError(err).Error("Error fetching updated group")
@@ -73,7 +68,6 @@ func (rt *_router) leaveGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// 5. Risposta 200 OK con JSON (E accontentiamo errcheck)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(group); err != nil {

@@ -12,7 +12,6 @@ import (
 )
 
 func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -20,12 +19,11 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 	}
 	userId := schemas.UserId(strings.TrimPrefix(authHeader, "Bearer "))
 
-	// 2. Parametri Path (Sorgente)
 	vars := ps
 	sourceConvId := schemas.ConversationId(vars.ByName("convId"))
 	originalMessageId := schemas.MessageId(vars.ByName("messageId"))
 
-	// 3. Parsing Body (Destinazione)
+	// parsa il body
 	var req struct {
 		DestinationConvId schemas.ConversationId `json:"destinationConversationId"`
 	}
@@ -38,7 +36,7 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 
-	// 4. CHECK SICUREZZA 1: L'utente è nella chat SORGENTE?
+	// guarda se l'utente è nella chat in
 	inSource, err := rt.db.IsUserInConversation(sourceConvId, userId)
 	if err != nil {
 		http.Error(w, "Error checking source permissions", http.StatusInternalServerError)
@@ -49,7 +47,7 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 
-	// 5. CHECK SICUREZZA 2: L'utente è nella chat DESTINAZIONE?
+	// guarda se l'utente è nella chat out
 	inDest, err := rt.db.IsUserInConversation(req.DestinationConvId, userId)
 	if err != nil {
 		http.Error(w, "Error checking destination permissions", http.StatusInternalServerError)
@@ -60,7 +58,7 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 
-	// 6. Recupera il messaggio originale
+	// orende il messaggio og
 	originalMsg, err := rt.db.GetMessage(originalMessageId)
 	if err != nil {
 		if err.Error() == "message not found" {
@@ -93,8 +91,6 @@ func (rt *_router) forwardMessage(w http.ResponseWriter, r *http.Request, ps htt
 
 	// risposta
 	w.Header().Set("Content-Type", "application/json")
-
-	//
 	w.WriteHeader(http.StatusCreated)
 
 	if err := json.NewEncoder(w).Encode(forwardedMsg); err != nil {

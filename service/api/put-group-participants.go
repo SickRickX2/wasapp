@@ -15,7 +15,6 @@ import (
 )
 
 func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// 1. Autenticazione
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || !strings.HasPrefix(authHeader, bearerPrefix+" ") {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -23,7 +22,6 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 	}
 	requestingUserId := schemas.UserId(strings.TrimPrefix(authHeader, bearerPrefix+" "))
 
-	// 2. Parametri Path (Solo ID Conversazione)
 	vars := ps
 	convId := schemas.ConversationId(vars.ByName("convId"))
 	if convId == "" {
@@ -31,7 +29,7 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// 2-bis. Permessi: solo partecipanti possono aggiungere membri
+	// solo i partecipanti possono aggiungere
 	isInConversation, err := rt.db.IsUserInConversation(convId, requestingUserId)
 	if err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
@@ -42,7 +40,7 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// 3. Parsing Body (Lista utenti)
+	//parsa il body
 	var req struct {
 		UserIds []schemas.UserId `json:"userIds"`
 	}
@@ -51,7 +49,7 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// Validazione minima: lista non vuota
+	// almeno 1 utente
 	if len(req.UserIds) == 0 {
 		http.Error(w, "User list cannot be empty", http.StatusBadRequest)
 		return
@@ -61,7 +59,7 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	// 4. Chiama il DB
+	// aggiunge al db
 	err = rt.db.AddGroupMembers(convId, req.UserIds)
 	if err != nil {
 		switch {
@@ -97,7 +95,7 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		}
 	}
 
-	// 5. Successo: ritorna il gruppo aggiornato come da YAML
+	// risposta con il gruppo aggiornato
 	updatedConv, err := rt.db.GetConversation(convId)
 	if err != nil {
 		http.Error(w, "Conversation not found", http.StatusNotFound)

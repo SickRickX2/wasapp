@@ -39,14 +39,13 @@ func (rt *_router) getConversations(w http.ResponseWriter, r *http.Request, ps h
 	response := struct {
 		Conversations []schemas.Conversation `json:"conversations"`
 	}{
-		// Se conversations è nil (es. zero chat), restituiamo un array vuoto invece di null
+		// se conv è nil resituisce un array vuoto
 		Conversations: conversations,
 	}
 	if response.Conversations == nil {
 		response.Conversations = make([]schemas.Conversation, 0)
 	}
 
-	// 2. Facciamo l'Encode e controlliamo l'errore per accontentare il linter!
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		rt.baseLogger.WithError(err).Error("failed to encode response in getConversations")
 	}

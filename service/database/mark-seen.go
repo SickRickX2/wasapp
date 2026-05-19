@@ -9,8 +9,6 @@ import (
 
 func (db *appdbimpl) MarkAsSeen(convId schemas.ConversationId, messageId schemas.MessageId, readerId schemas.UserId) (schemas.Message, error) {
 	var out schemas.Message
-
-	// 1) Get message owner/status and conversation kind.
 	var senderId schemas.UserId
 	var convKind string
 	err := db.c.QueryRow(
@@ -27,7 +25,7 @@ func (db *appdbimpl) MarkAsSeen(convId schemas.ConversationId, messageId schemas
 		return out, err
 	}
 
-	// 2) Track individual read (ignore duplicates). Sender is excluded from tracking.
+	// se il lettore è il mittente non fa nulla
 	if readerId != senderId {
 		_, err = db.c.Exec(
 			`INSERT OR IGNORE INTO message_reads (messageId, userId, readAt) VALUES (?, ?, CURRENT_TIMESTAMP)`,
@@ -39,7 +37,7 @@ func (db *appdbimpl) MarkAsSeen(convId schemas.ConversationId, messageId schemas
 		}
 	}
 
-	// 3) Private chat: global status becomes seen immediately.
+	// se è privata setta subito seen appena l'altro lo vede
 	if convKind == "private" {
 		_, err = db.c.Exec(`UPDATE messages SET status = 'seen' WHERE messageId = ? AND status != 'deleted'`, messageId)
 		if err != nil {
@@ -47,7 +45,7 @@ func (db *appdbimpl) MarkAsSeen(convId schemas.ConversationId, messageId schemas
 		}
 	}
 
-	// 4) Group chat: set seen only if all participants except sender have read.
+	// se gruppo tutti tranne mittente devono aver visto
 	if convKind == groupType {
 		var readersCount int
 		err = db.c.QueryRow(`SELECT COUNT(DISTINCT userId) FROM message_reads WHERE messageId = ?`, messageId).Scan(&readersCount)
@@ -72,8 +70,6 @@ func (db *appdbimpl) MarkAsSeen(convId schemas.ConversationId, messageId schemas
 			}
 		}
 	}
-
-	// 5) Return updated message.
 	out, err = db.GetMessage(messageId)
 	if err != nil {
 		return out, err
