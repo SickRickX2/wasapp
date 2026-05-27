@@ -40,7 +40,7 @@ func (rt *_router) addToGroup(w http.ResponseWriter, r *http.Request, ps httprou
 		return
 	}
 
-	//parsa il body
+	// parsa il body
 	var req struct {
 		UserIds []schemas.UserId `json:"userIds"`
 	}

@@ -27,7 +27,7 @@ func (rt *_router) commentMessage(w http.ResponseWriter, r *http.Request, ps htt
 		return
 	}
 
-	//utenete e messaggio nella conv
+	// utenete e messaggio nella conv
 	isInConversation, err := rt.db.IsUserInConversation(convId, userId)
 	if err != nil || !isInConversation {
 		http.Error(w, "Not Found", http.StatusNotFound)
