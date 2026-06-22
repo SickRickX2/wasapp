@@ -25,16 +25,14 @@ const props = defineProps({
 })
 
 const avatarUrl = computed(() => {
-  // se ha una foto usa quella
   if (props.realImageUrl && props.realImageUrl.trim() !== '') {
     return props.realImageUrl
   }
-  const seedValue = props.displayName && props.displayName.trim() !== '' 
-    ? props.displayName 
+  // se non c'è una foto reale genera un avatar con le iniziali tramite l'api dicebear, usando displayName come seed
+  const seedValue = props.displayName && props.displayName.trim() !== ''
+    ? props.displayName
     : props.name
   const safeSeed = encodeURIComponent(seedValue)
-  
-  // API DiceBear v8 
   return `https://api.dicebear.com/8.x/initials/svg?seed=${safeSeed}&backgroundColor=0288d1,009688,7cb342,f57c00,e53935,8e24aa&textColor=ffffff`
 })
 </script>

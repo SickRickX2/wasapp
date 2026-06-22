@@ -39,6 +39,9 @@ const quickEmojis = ['👍', '❤️', '😂', '😯', '😢', '🙏']
 const isPollingInProgress = ref(false)
 let pollingInterval = null
 let groupMemberSearchTimer = null
+const forwardSearchQuery = ref('')
+const forwardUserResults = ref([])
+let forwardSearchTimer = null
 
 // evita loop di marking, salva in locale 
 const locallyMarkedAsSeen = new Set()
@@ -47,6 +50,7 @@ const selectedConversation = computed(() => {
   return conversations.value.find((c) => c.convId === selectedConversationId.value) ?? null
 })
 
+// ordina le conversazioni per data dell'ultimo messaggio, la più recente in cima
 const sortedConversationsList = computed(() => {
   if (!conversations.value) return []
 
@@ -78,6 +82,7 @@ function formatMessageTime(dateLike) {
   return formatTime(dateLike)
 }
 
+// raggruppa le reazioni per emoji conteggiando gli utenti 
 const aggregateReactions = (reactions) => {
   if (!reactions || reactions.length === 0) return []
 
@@ -138,6 +143,7 @@ const sortedMessages = computed(() => {
   return currentMessages.value.slice().reverse()
 })
 
+// lista che alterna separatori di giorno e messaggi in ordine cronologico
 const messageTimeline = computed(() => {
   const timeline = []
   let lastDay = ''
@@ -280,6 +286,7 @@ async function resolveUsernameById(userId) {
   }
 }
 
+// popola la cache dei nomi dai dati già presenti nelle conversazioni prima di fare chiamate al backend
 async function enrichConversationNames() {
   const idsToResolve = new Set()
 
@@ -399,7 +406,9 @@ async function ensureUserPfpLoaded(userId, forceRefresh = false) {
   if (!userId || userId === state.userId) return
   if (!forceRefresh && userPfpCache[userId] !== undefined) return
 
-  userPfpCache[userId] = null
+  if (userPfpCache[userId] === undefined) {
+    userPfpCache[userId] = null
+  }
   try {
     const response = await axios.get(`/users/${userId}/pfp`)
     const pfpUrl = response.data?.pfpUrl
@@ -627,7 +636,7 @@ const isMessageReadByAll = (message) => {
     return message.status === 'seen'
   }
 
-  // SE È UN GRUPPO:
+  // SE È UN GRUPPO
   // calcola partecipanti
   if (Array.isArray(message.readBy)) {
     const expectedReaders = (selectedConversation.value.participants?.length || 2) - 1
@@ -897,8 +906,35 @@ async function toggleReaction(message, emoji) {
   }
 }
 
+const filteredConversationsForForward = computed(() => {
+  const q = forwardSearchQuery.value.trim().toLowerCase()
+  if (!q) return conversations.value
+  return conversations.value.filter(conv => getChatTitle(conv).toLowerCase().includes(q))
+})
+
+watch(forwardSearchQuery, (value) => {
+  clearTimeout(forwardSearchTimer)
+  forwardSearchTimer = setTimeout(async () => {
+    const q = value.trim()
+    if (!q) {
+      forwardUserResults.value = []
+      return
+    }
+    try {
+      const response = await axios.get(`/users?q=${encodeURIComponent(q)}`)
+      const data = response.data
+      const users = Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : []
+      forwardUserResults.value = users.filter(u => u.userId !== state.userId)
+    } catch {
+      forwardUserResults.value = []
+    }
+  }, 300)
+})
+
 const forwardMessage = (message) => {
   messageToForward.value = message
+  forwardSearchQuery.value = ''
+  forwardUserResults.value = []
 }
 
 const prepareReply = (message) => {
@@ -915,12 +951,36 @@ const executeForward = async (targetConvId) => {
     )
 
     document.getElementById('closeForwardModalBtn')?.click()
+    forwardSearchQuery.value = ''
+    forwardUserResults.value = []
 
     selectedConversationId.value = targetConvId
+    await loadConversations()
     await loadMessages(targetConvId, { forceScroll: true })
     messageToForward.value = null
   } catch (error) {
     console.error('Error forwarding message', error)
+    alert('Unable to forward message')
+  }
+}
+
+const executeForwardToUser = async (user) => {
+  if (!messageToForward.value || !user?.userId) return
+  try {
+    const existingConv = conversations.value.find(
+      conv => conv.type === 'private' && conv.participants?.includes(user.userId)
+    )
+    let targetConvId
+    if (existingConv) {
+      targetConvId = existingConv.convId
+    } else {
+      const response = await axios.post('/conversations', { recipientId: user.userId })
+      targetConvId = response.data?.convId
+      if (!targetConvId) throw new Error('No convId returned')
+    }
+    await executeForward(targetConvId)
+  } catch (error) {
+    console.error('Error forwarding to user', error)
     alert('Unable to forward message')
   }
 }
@@ -1057,6 +1117,7 @@ onMounted(async () => {
 onUnmounted(() => {
   if (pollingInterval) clearInterval(pollingInterval)
   if (groupMemberSearchTimer) clearTimeout(groupMemberSearchTimer)
+  if (forwardSearchTimer) clearTimeout(forwardSearchTimer)
   window.removeEventListener('click', closeMessageMenu)
   window.removeEventListener('refresh-conversations', refreshConversationsNow)
 })
@@ -1221,8 +1282,16 @@ onUnmounted(() => {
             <button type="button" class="btn-close" id="closeForwardModalBtn" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body p-0">
+            <div class="p-2 border-bottom">
+              <input
+                type="text"
+                class="form-control form-control-sm"
+                placeholder="Search chats or people..."
+                v-model="forwardSearchQuery"
+              />
+            </div>
             <div class="list-group list-group-flush">
-              <template v-for="conv in conversations" :key="conv.convId">
+              <template v-for="conv in filteredConversationsForForward" :key="conv.convId">
                 <button
                   type="button"
                   class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3"
@@ -1237,11 +1306,39 @@ onUnmounted(() => {
                     />
                     <span class="fw-medium">{{ getChatTitle(conv) }}</span>
                   </div>
-                  <span class="material-symbols-outlined text-primary">send</span>
+                  <span class="material-symbols-outlined text-muted">send</span>
                 </button>
               </template>
-              <div v-if="conversations.length === 0" class="p-4 text-center text-muted">
-                No chats available for forwarding.
+
+              <template v-if="forwardUserResults.length > 0">
+                <div
+                  v-if="forwardUserResults.some(u => !conversations.some(c => c.type === 'private' && c.participants?.includes(u.userId)))"
+                  class="px-3 py-2 text-muted small fw-semibold bg-light border-top"
+                >
+                  People
+                </div>
+                <template v-for="user in forwardUserResults.filter(u => !conversations.some(c => c.type === 'private' && c.participants?.includes(u.userId)))" :key="user.userId">
+                  <button
+                    type="button"
+                    class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-3"
+                    @click="executeForwardToUser(user)"
+                  >
+                    <div class="d-flex align-items-center gap-3">
+                      <UserAvatar
+                        :name="user.userId"
+                        :displayName="user.userName"
+                        :size="40"
+                        :realImageUrl="userPfpCache[user.userId] ?? null"
+                      />
+                      <span class="fw-medium">{{ user.userName }}</span>
+                    </div>
+                    <span class="material-symbols-outlined text-muted">send</span>
+                  </button>
+                </template>
+              </template>
+
+              <div v-if="filteredConversationsForForward.length === 0 && forwardUserResults.filter(u => !conversations.some(c => c.type === 'private' && c.participants?.includes(u.userId))).length === 0" class="p-4 text-center text-muted">
+                No chats or people found.
               </div>
             </div>
           </div>

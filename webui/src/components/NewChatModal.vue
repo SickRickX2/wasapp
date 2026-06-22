@@ -20,6 +20,7 @@ async function fetchUsers(query = '') {
     const response = await axios.get(`/users${suffix}`)
     const data = response.data
     const users = Array.isArray(data?.users) ? data.users : Array.isArray(data) ? data : []
+    // esclude l'utente corrente dai risultati
     searchResults.value = users.filter((user) => user?.userId && user.userId !== state.userId)
   } catch {
     searchResults.value = []
@@ -27,6 +28,7 @@ async function fetchUsers(query = '') {
   }
 }
 
+// carica tutti gli utenti appena il modal diventa visibile
 function handleModalShown() {
   fetchUsers(searchQuery.value)
 }
@@ -59,6 +61,7 @@ function cleanupModalArtifacts() {
   document.querySelectorAll('.modal-backdrop').forEach((el) => el.remove())
 }
 
+// chiude il modal bootstrap e rimuove manualmente backdrop e classi residue per evitare blocchi allo scroll
 function closeModal() {
   if (!modalRef.value) {
     cleanupModalArtifacts()
@@ -82,6 +85,7 @@ function closeModal() {
   })
 }
 
+// post /conversations con recipientId, poi emette chatCreated per navigare alla nuova chat
 async function startPrivateChat(recipientId) {
   errorMessage.value = ''
   try {

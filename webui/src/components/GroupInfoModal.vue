@@ -72,6 +72,7 @@ function onFileSelected(event) {
   event.target.value = ''
 }
 
+// emette update-name solo se il nome non è vuoto
 function saveGroupName() {
   if (editNameValue.value.trim()) {
     emit('update-name', editNameValue.value)

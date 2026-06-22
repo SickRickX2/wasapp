@@ -2,13 +2,14 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '../services/axios'
-import { state } from '../services/state'
+import { state, updateProfilePictureUrl } from '../services/state'
 
 const router = useRouter()
 const username = ref('')
 const errorMessage = ref('')
 const isLoading = ref(false)
 
+// login e registrazione coincidono: se l'utente non esiste viene creato automaticamente
 async function doLogin() {
   errorMessage.value = ''
 
@@ -20,6 +21,7 @@ async function doLogin() {
 
   isLoading.value = true
   try {
+    // il backend risponde con identifier, che è lo userId usato come bearer token per tutte le richieste successive
     const response = await axios.post('/session', { name })
     if (response.status === httpStatusCreated && response.data?.identifier) {
       const userId = response.data.identifier
@@ -27,6 +29,13 @@ async function doLogin() {
       state.userName = name
       localStorage.setItem('userId', userId)
       localStorage.setItem('userName', name)
+      try {
+        const pfpResponse = await axios.get(`/users/${userId}/pfp`)
+        const pfpUrl = pfpResponse.data?.pfpUrl
+        updateProfilePictureUrl(pfpUrl || null)
+      } catch {
+        updateProfilePictureUrl(null)
+      }
       await router.push({ name: 'Home' })
       return
     }

@@ -38,6 +38,7 @@ defineProps({
 
 const emit = defineEmits(['select'])
 
+// recupera il nome di un partecipante dagli array paralleli participants/participantNames
 function getParticipantNameFromConversation(conversation, participantId) {
   const participants = Array.isArray(conversation?.participants) ? conversation.participants : []
   const participantNames = Array.isArray(conversation?.participantNames) ? conversation.participantNames : []
@@ -46,6 +47,7 @@ function getParticipantNameFromConversation(conversation, participantId) {
   return participantId || 'User'
 }
 
+// prefissa l'anteprima con "You" se il mittente è l'utente corrente
 function getLastMessageSenderLabel(conversation, currentUserId) {
   const senderId = conversation?.lastMessage?.sender
   if (!senderId) return ''
@@ -53,6 +55,7 @@ function getLastMessageSenderLabel(conversation, currentUserId) {
   return getParticipantNameFromConversation(conversation, senderId)
 }
 
+// mostra done_all se il messaggio è stato visto, done altrimenti — solo per messaggi inviati dall'utente
 function getLastMessageStatusIcon(conversation, currentUserId) {
   const lastMessage = conversation?.lastMessage
   if (!lastMessage || lastMessage.sender !== currentUserId || lastMessage.status === 'deleted') return ''
@@ -66,6 +69,7 @@ function getLastMessageStatusClass(conversation, currentUserId, isSelected) {
   return isSelected ? 'text-white-50' : 'text-muted'
 }
 
+// genera la stringa di anteprima tenendo conto di messaggi eliminati, di sistema e media
 function getConversationLastMessagePreview(conversation, currentUserId) {
   const lastMessage = conversation?.lastMessage
   if (!lastMessage) return ''

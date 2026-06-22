@@ -47,6 +47,7 @@ function isSelected(userId) {
   return selectedUsers.value.some((u) => u.userId === userId)
 }
 
+// aggiunge o rimuove l'utente dalla selezione in base alla sua presenza corrente
 function toggleUser(user) {
   if (!user?.userId) return
   const index = selectedUsers.value.findIndex((u) => u.userId === user.userId)
@@ -114,6 +115,7 @@ function closeModal() {
   })
 }
 
+// crea prima il gruppo con post /groups, poi se c'è una foto la carica separatamente con una put
 async function submitGroup() {
   const trimmedGroupName = groupName.value.trim()
   if (!trimmedGroupName) {

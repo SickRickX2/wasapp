@@ -46,6 +46,7 @@ defineProps({
   },
 })
 
+// riceve via props e comunica verso il parent tramite emit
 const emit = defineEmits([
   'open-image-preview',
   'toggle-menu',

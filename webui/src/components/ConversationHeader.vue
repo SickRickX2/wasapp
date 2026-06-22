@@ -32,6 +32,7 @@ defineProps({
   },
 })
 
+// cliccando l'header si apre il pannello con le info della conversazione
 const emit = defineEmits(['open-info'])
 </script>
 
